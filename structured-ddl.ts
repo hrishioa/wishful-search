@@ -12,13 +12,28 @@ export type DDLColumnBase = {
 export type DDLColumnMeta = {
   dynamicEnumSettings?:
     | {
-        type: 'EXHAUSTIVE' | 'NUMERIC_MIN_MAX';
+        type: 'EXHAUSTIVE';
+        topK?: number;
       }
     | {
-        type: 'CHAR_LIMITED';
+        type: 'MIN_MAX';
+        format: 'DATE' | 'NUMBER';
+      }
+    | {
+        type: 'EXHAUSTIVE_CHAR_LIMITED';
         charLimit: number; // Making this a token limit would be better, but it makes us more model dependent and more expensive to compute
       };
-  dynamicEnumData?: any[];
+  dynamicEnumData?:
+    | {
+        type: 'EXAMPLES';
+        examples: string[];
+      }
+    | {
+        type: 'MIN_MAX';
+        exceptions: string[];
+        min: string;
+        max: string;
+      };
   visibleToLLM: boolean;
 };
 
@@ -42,6 +57,29 @@ export function generateSQLDDL(
     .join('\n\n');
 }
 
+function generateComment(column: DDLColumn) {
+  let examples = '';
+
+  if (column.dynamicEnumData?.type === 'EXAMPLES') {
+    examples = `e.g. ${column.dynamicEnumData.examples.join(', ')}`;
+  } else if (column.dynamicEnumData?.type === 'MIN_MAX') {
+    examples = `between ${column.dynamicEnumData.min} and ${column.dynamicEnumData.max}`;
+    if (column.dynamicEnumData.exceptions.length) {
+      examples += ` (or ${column.dynamicEnumData.exceptions
+        .map((ex) => String(ex))
+        .join(',')})`;
+    }
+  } else if (column.staticExamples?.length) {
+    examples = `e.g. ${column.staticExamples.join(', ')}`;
+  }
+
+  const commentPieces: string[] = [];
+  if (column.description) commentPieces.push(column.description);
+  if (examples) commentPieces.push(examples);
+
+  return commentPieces.length ? ` --${commentPieces.join(' ')}` : '';
+}
+
 export function generateSQLTableDDL(
   structuredDDL: DDLTable,
   forLLM: boolean,
@@ -55,20 +93,13 @@ export function generateSQLTableDDL(
   const tableRows = structuredDDL.columns
     .filter((column) => !forLLM || column.visibleToLLM)
     .map((column, colId) => {
-      const comment =
-        forLLM && (column.description || column.staticExamples?.length)
-          ? `--${column.description}${
-              column.staticExamples?.length
-                ? ' e.g. ' + column.staticExamples?.join(', ')
-                : ''
-            }`
-          : '';
+      const comment = (forLLM && generateComment(column)) || '';
 
       return `${column.name} ${column.columnSpec}${
         colId >= structuredDDL.columns.length - 1 && !fkRelationships.length
           ? ''
           : ','
-      } ${comment}`;
+      }${comment}`;
     });
 
   return `CREATE TABLE IF NOT EXISTS ${structuredDDL.name} (

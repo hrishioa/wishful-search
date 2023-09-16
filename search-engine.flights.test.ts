@@ -6,7 +6,7 @@ import {
 import { WishfulSearchEngine } from './search-engine';
 
 (async () => {
-  const wishfulSearchEngine = new WishfulSearchEngine(
+  const wishfulSearchEngine = await WishfulSearchEngine.create(
     'flights',
     TEST_FLIGHTS_DDL,
     {
@@ -20,7 +20,7 @@ import { WishfulSearchEngine } from './search-engine';
 
   console.log('Started engine.');
 
-  const errors = await wishfulSearchEngine.index(TEST_FLIGHTS);
+  const errors = wishfulSearchEngine.index(TEST_FLIGHTS);
 
   console.log('Errors: ', errors);
 
