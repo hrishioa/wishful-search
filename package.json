@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "sql.js": "^1.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.7",
+    "@types/sql.js": "^1.4.4",
+    "@types/terminal-kit": "^2.5.1",
+    "terminal-kit": "^3.0.0"
+  }
+}
