@@ -44,9 +44,7 @@ export type DDLTable = {
   columns: DDLColumn[];
 };
 
-// TODO: Map numeric enums as between X and X
 // TODO: Make sure it's one table with joins outward
-// TODO: See if we can limit final example representation by number of tokens
 
 export function generateSQLDDL(
   structuredDDL: DDLTable[],
