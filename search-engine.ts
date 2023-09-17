@@ -1,14 +1,25 @@
-import { DBColumn, LLMSearcheableDatabase } from './db';
-import { DDLTable, generateSQLDDL } from './structured-ddl';
+import { LLMSearcheableDatabase } from './db';
+import { generateSQLDDL } from './structured-ddl';
+import { DBColumn, DDLTable, QQTurn } from './types';
 
 export class WishfulSearchEngine<ElementType> {
   private db: LLMSearcheableDatabase<ElementType>;
+  private history: {
+    question: string;
+    query: string;
+  }[] = [];
 
   static async create<ElementType>(
     name: string,
     tables: DDLTable[],
     primaryKey: DBColumn,
     objectToTabledRow: (rowObject: ElementType) => any[][],
+    llmConfig: {
+      finalMessageIsAssistant: boolean;
+      enableTodaysDate: boolean;
+      fewShotLearning?: QQTurn[];
+    },
+    saveHistory: boolean = true,
     enableDynamicEnums = true,
     sortEnumsByFrequency = false,
     sqljsWasmURL?: string,

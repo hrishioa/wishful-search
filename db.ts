@@ -1,14 +1,5 @@
 import initSqlJs, { Database, SqlJsStatic } from 'sql.js';
-
-export type DBColumn = {
-  table: string;
-  column: string;
-};
-
-export type InsertionErroredRow = {
-  index: number;
-  error: any;
-};
+import { DBColumn, InsertionErroredRow } from './types';
 
 /**
  * Why not use an ORM? Because I didn't want lock-in and I wanted to keep it simple.
