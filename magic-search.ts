@@ -22,17 +22,17 @@ RULES:
 6. Number of segments for a direct flight is one.
 \"\"\"
 
-Provide an appropriate SQLite Query to answer the user questions. Only filter by the things the user asked for.` ,
-  user: (question: string) => question,
-  assistant: (primaryKey: DBColumn, query: string) =>
-`SELECT ${primaryKey.column} from ${primaryKey.table}${query ? ' '+query : ''};`
+Provide an appropriate SQLite Query to return the keys tp answer the user's question. Only filter by the things the user asked for.` ,
+  user: (question: string, queryPrefix: string, userStartsQuery: boolean) => userStartsQuery ? `${question}\n\nQuery: ${queryPrefix}` : `${question}`,
+  assistant: (query: string, queryPrefix: string, userStartsQuery: boolean) =>
+    userStartsQuery ? `${query}` : `${queryPrefix} ${query}`,
 }
 
-function generateLLMMessages(
+export function generateLLMMessages(
   dbDDL: string,
-  primaryKey: DBColumn,
   question: string,
-  finalMessageIsAssistant: boolean = false,
+  queryPrefix: string,
+  userStartsQuery: boolean,
   history?: QQTurn[],
   fewShotLearningBatch?: QQTurn[],
   enableTodaysDate?: boolean,
@@ -52,12 +52,12 @@ function generateLLMMessages(
     for (const { question, query } of fewShotLearningBatch) {
       messages.push({
         role: 'user',
-        content: prompts.user(question),
+        content: prompts.user(question, queryPrefix, userStartsQuery),
       });
 
       messages.push({
         role: 'assistant',
-        content: prompts.assistant(primaryKey, query),
+        content: prompts.assistant(query, queryPrefix, userStartsQuery),
       });
     }
   }
@@ -66,29 +66,25 @@ function generateLLMMessages(
     for (const { question, query } of history) {
       messages.push({
         role: 'user',
-        content: prompts.user(question),
+        content: prompts.user(question, queryPrefix, userStartsQuery),
       });
 
       messages.push({
         role: 'assistant',
-        content: prompts.assistant(primaryKey, query),
+        content: prompts.assistant(query, queryPrefix, userStartsQuery),
       });
     }
   }
 
   messages.push({
     role: 'user',
-    content:
-      prompts.user(question) +
-      (finalMessageIsAssistant
-        ? ''
-        : `\n\n${prompts.assistant(primaryKey, '')}`),
+    content: prompts.user(question, queryPrefix, userStartsQuery),
   });
 
-  if (finalMessageIsAssistant) {
+  if (!userStartsQuery && !fewShotLearningBatch?.length) {
     messages.push({
       role: 'assistant',
-      content: prompts.assistant(primaryKey, ''),
+      content: prompts.assistant('', queryPrefix, userStartsQuery),
     });
   }
 

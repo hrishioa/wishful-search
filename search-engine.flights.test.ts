@@ -14,6 +14,11 @@ import { WishfulSearchEngine } from './search-engine';
       column: 'uid',
     },
     flightToRows,
+    {
+      userStartsQuery: false,
+      enableTodaysDate: true,
+      fewShotLearning: [],
+    },
     true,
     true,
   );
@@ -25,4 +30,12 @@ import { WishfulSearchEngine } from './search-engine';
   console.log('Errors: ', errors);
 
   console.log('Inserted ', TEST_FLIGHTS.length, 'flights.');
+
+  const question = 'what are the longest flights landing before 8 pm?';
+
+  console.log('Searching - ', question);
+
+  const messages = wishfulSearchEngine.generateSearchMessages(question);
+
+  console.log('Got messages - ', JSON.stringify(messages, null, 2));
 })();

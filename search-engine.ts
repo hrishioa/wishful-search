@@ -1,6 +1,13 @@
 import { LLMSearcheableDatabase } from './db';
+import { generateLLMMessages } from './magic-search';
 import { generateSQLDDL } from './structured-ddl';
 import { DBColumn, DDLTable, QQTurn } from './types';
+
+type LLMConfig = {
+  userStartsQuery: boolean;
+  enableTodaysDate: boolean;
+  fewShotLearning?: QQTurn[];
+};
 
 export class WishfulSearchEngine<ElementType> {
   private db: LLMSearcheableDatabase<ElementType>;
@@ -8,17 +15,14 @@ export class WishfulSearchEngine<ElementType> {
     question: string;
     query: string;
   }[] = [];
+  private queryPrefix: string;
 
   static async create<ElementType>(
     name: string,
     tables: DDLTable[],
     primaryKey: DBColumn,
     objectToTabledRow: (rowObject: ElementType) => any[][],
-    llmConfig: {
-      finalMessageIsAssistant: boolean;
-      enableTodaysDate: boolean;
-      fewShotLearning?: QQTurn[];
-    },
+    llmConfig: LLMConfig,
     saveHistory: boolean = true,
     enableDynamicEnums = true,
     sortEnumsByFrequency = false,
@@ -39,6 +43,7 @@ export class WishfulSearchEngine<ElementType> {
       primaryKey,
       objectToTabledRow,
       enableDynamicEnums,
+      llmConfig,
       sortEnumsByFrequency,
       sqljsWasmURL,
     );
@@ -53,10 +58,16 @@ export class WishfulSearchEngine<ElementType> {
     private readonly primaryKey: DBColumn,
     private readonly objectToTabledRow: (rowObject: ElementType) => any[][],
     private readonly enableDynamicEnums = true,
+    private readonly llmConfig: LLMConfig,
     private readonly sortEnumsByFrequency = false,
     sqljsWasmURL?: string,
   ) {
     this.db = db;
+    this.queryPrefix = this.generateQueryPrefix();
+  }
+
+  private generateQueryPrefix() {
+    return `SELECT ${this.primaryKey.column} FROM ${this.primaryKey.table}`;
   }
 
   private computeEnums() {
@@ -155,5 +166,17 @@ export class WishfulSearchEngine<ElementType> {
   remove(elementIds?: string[]) {
     if (elementIds) return this.db.delete(elementIds);
     else return this.db.clearDb();
+  }
+
+  generateSearchMessages(question: string) {
+    return generateLLMMessages(
+      generateSQLDDL(this.tables, true),
+      question,
+      this.queryPrefix,
+      this.llmConfig.userStartsQuery,
+      this.history,
+      this.llmConfig.fewShotLearning,
+      this.llmConfig.enableTodaysDate,
+    );
   }
 }
