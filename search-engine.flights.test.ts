@@ -1,4 +1,5 @@
 import {
+  FLIGHTS_FEW_SHOT_LEARNING,
   TEST_FLIGHTS,
   TEST_FLIGHTS_DDL,
   flightToRows,
@@ -17,7 +18,7 @@ import { WishfulSearchEngine } from './search-engine';
     {
       userStartsQuery: false,
       enableTodaysDate: true,
-      fewShotLearning: [],
+      fewShotLearning: FLIGHTS_FEW_SHOT_LEARNING,
     },
     true,
     true,

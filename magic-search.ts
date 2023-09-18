@@ -23,7 +23,7 @@ RULES:
 \"\"\"
 
 Provide an appropriate SQLite Query to return the keys tp answer the user's question. Only filter by the things the user asked for.` ,
-  user: (question: string, queryPrefix: string, userStartsQuery: boolean) => userStartsQuery ? `${question}\n\nQuery: ${queryPrefix}` : `${question}`,
+  user: (question: string, queryPrefix: string, userStartsQuery: boolean, firstQuestion: boolean) => userStartsQuery ? `${firstQuestion ? 'Scratch that - new filters. ': ''}${question}\n\nQuery: ${queryPrefix}` : `${firstQuestion ? 'Scratch that - new filters. ': ''}${question}`,
   assistant: (query: string, queryPrefix: string, userStartsQuery: boolean) =>
     userStartsQuery ? `${query}` : `${queryPrefix} ${query}`,
 }
@@ -33,7 +33,7 @@ export function generateLLMMessages(
   question: string,
   queryPrefix: string,
   userStartsQuery: boolean,
-  history?: QQTurn[],
+  history: QQTurn[],
   fewShotLearningBatch?: QQTurn[],
   enableTodaysDate?: boolean,
 ): LLMCompatibleMessage[] {
@@ -52,7 +52,7 @@ export function generateLLMMessages(
     for (const { question, query } of fewShotLearningBatch) {
       messages.push({
         role: 'user',
-        content: prompts.user(question, queryPrefix, userStartsQuery),
+        content: prompts.user(question, queryPrefix, userStartsQuery, false),
       });
 
       messages.push({
@@ -66,7 +66,7 @@ export function generateLLMMessages(
     for (const { question, query } of history) {
       messages.push({
         role: 'user',
-        content: prompts.user(question, queryPrefix, userStartsQuery),
+        content: prompts.user(question, queryPrefix, userStartsQuery, false),
       });
 
       messages.push({
@@ -78,7 +78,12 @@ export function generateLLMMessages(
 
   messages.push({
     role: 'user',
-    content: prompts.user(question, queryPrefix, userStartsQuery),
+    content: prompts.user(
+      question,
+      queryPrefix,
+      userStartsQuery,
+      history.length > 0 ? false : true,
+    ),
   });
 
   if (!userStartsQuery && !fewShotLearningBatch?.length) {
