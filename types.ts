@@ -70,3 +70,21 @@ export type DDLTable = {
   name: string;
   columns: DDLColumn[];
 };
+
+// ################################# Search Engine
+
+export type CommonLLMParameters = {
+  model: string;
+  temperature?: number;
+  max_tokens?: number;
+};
+
+export type LLMConfig = {
+  userStartsQuery: boolean;
+  enableTodaysDate: boolean;
+  fewShotLearning?: QQTurn[];
+};
+
+export type LLMCallFunc = (
+  messages: LLMCompatibleMessage[],
+) => Promise<string | null>;

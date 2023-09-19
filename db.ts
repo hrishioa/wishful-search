@@ -89,6 +89,16 @@ export class LLMSearcheableDatabase<RowObject> {
     return enums;
   }
 
+  rawQuery(query: string): string[] {
+    const result = this.db.exec(query);
+
+    if (!result.length) return [];
+
+    const keys = result[0].values.flat() as string[];
+
+    return keys;
+  }
+
   rawQueryKeys(key: DBColumn, query: string): string[] {
     const fullSQLQuery = `SELECT ${key.column} FROM ${key.table} WHERE ${query}`;
 

@@ -1,13 +1,7 @@
 import { LLMSearcheableDatabase } from './db';
 import { generateLLMMessages } from './magic-search';
 import { generateSQLDDL } from './structured-ddl';
-import { DBColumn, DDLTable, QQTurn } from './types';
-
-type LLMConfig = {
-  userStartsQuery: boolean;
-  enableTodaysDate: boolean;
-  fewShotLearning?: QQTurn[];
-};
+import { DBColumn, DDLTable, LLMCallFunc, LLMConfig, QQTurn } from './types';
 
 export class WishfulSearchEngine<ElementType> {
   private db: LLMSearcheableDatabase<ElementType>;
@@ -23,6 +17,7 @@ export class WishfulSearchEngine<ElementType> {
     primaryKey: DBColumn,
     objectToTabledRow: (rowObject: ElementType) => any[][],
     llmConfig: LLMConfig,
+    callLLM: LLMCallFunc | null,
     saveHistory: boolean = true,
     enableDynamicEnums = true,
     sortEnumsByFrequency = false,
@@ -41,11 +36,10 @@ export class WishfulSearchEngine<ElementType> {
       name,
       tables,
       primaryKey,
-      objectToTabledRow,
       enableDynamicEnums,
       llmConfig,
+      callLLM,
       sortEnumsByFrequency,
-      sqljsWasmURL,
     );
 
     return searcheableDatabase;
@@ -56,11 +50,10 @@ export class WishfulSearchEngine<ElementType> {
     private readonly name: string,
     private readonly tables: DDLTable[],
     private readonly primaryKey: DBColumn,
-    private readonly objectToTabledRow: (rowObject: ElementType) => any[][],
     private readonly enableDynamicEnums = true,
     private readonly llmConfig: LLMConfig,
+    private readonly callLLM: LLMCallFunc | null,
     private readonly sortEnumsByFrequency = false,
-    sqljsWasmURL?: string,
   ) {
     this.db = db;
     this.queryPrefix = this.generateQueryPrefix();
@@ -85,16 +78,18 @@ export class WishfulSearchEngine<ElementType> {
           this.sortEnumsByFrequency,
         );
 
-        if (column.dynamicEnumSettings!.type === 'EXHAUSTIVE') {
+        const enumSettings = column.dynamicEnumSettings!;
+
+        if (enumSettings.type === 'EXHAUSTIVE') {
           column.dynamicEnumData = {
             type: 'EXAMPLES',
-            examples: column.dynamicEnumSettings!.topK
-              ? enums.slice(0, column.dynamicEnumSettings!.topK)
+            examples: enumSettings.topK
+              ? enums.slice(0, enumSettings.topK)
               : enums,
           };
         } else if (
-          column.dynamicEnumSettings!.type === 'MIN_MAX' &&
-          column.dynamicEnumSettings!.format === 'NUMBER'
+          enumSettings.type === 'MIN_MAX' &&
+          enumSettings.format === 'NUMBER'
         ) {
           const numericEnums = enums
             .map((enumValue) => parseFloat(enumValue))
@@ -116,8 +111,8 @@ export class WishfulSearchEngine<ElementType> {
               : maxVal.toFixed(2),
           };
         } else if (
-          column.dynamicEnumSettings!.type === 'MIN_MAX' &&
-          column.dynamicEnumSettings!.format === 'DATE'
+          enumSettings.type === 'MIN_MAX' &&
+          enumSettings.format === 'DATE'
         ) {
           const numericEnums = enums.map((enumValue) => Date.parse(enumValue)); // TODO: Copilot generated, test later
           column.dynamicEnumData = {
@@ -128,18 +123,12 @@ export class WishfulSearchEngine<ElementType> {
             min: new Date(Math.min(...numericEnums)).toISOString(),
             max: new Date(Math.max(...numericEnums)).toISOString(),
           };
-        } else if (
-          column.dynamicEnumSettings!.type === 'EXHAUSTIVE_CHAR_LIMITED'
-        ) {
+        } else if (enumSettings.type === 'EXHAUSTIVE_CHAR_LIMITED') {
           // Add examples until we hit the char limit
           const examples: string[] = [];
           let charCount = 0;
           for (const enumValue of enums) {
-            if (
-              charCount + enumValue.length >
-              column.dynamicEnumSettings!.charLimit
-            )
-              break;
+            if (charCount + enumValue.length > enumSettings.charLimit) break;
             examples.push(enumValue);
             charCount += enumValue.length;
           }
@@ -178,5 +167,30 @@ export class WishfulSearchEngine<ElementType> {
       this.llmConfig.fewShotLearning,
       this.llmConfig.enableTodaysDate,
     );
+  }
+
+  async search(question: string) {
+    if (!this.callLLM)
+      throw new Error(
+        'No LLM call function provided. Use generateSearchMessages instead if you intent to make your own calls.',
+      );
+
+    const messages = this.generateSearchMessages(question);
+
+    console.log('Calling with messages ', JSON.stringify(messages, null, 2));
+
+    const partialQuery = await this.callLLM(messages);
+
+    console.log('Got partial query ', partialQuery);
+
+    if (!partialQuery) return [];
+
+    const fullQuery = this.queryPrefix + ' ' + partialQuery;
+
+    console.log('Full query is ', fullQuery);
+
+    const results = this.db.rawQuery(fullQuery);
+
+    console.log('Got results - ', results);
   }
 }

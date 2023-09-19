@@ -4,9 +4,18 @@ import {
   TEST_FLIGHTS_DDL,
   flightToRows,
 } from './data/flight-data';
+import { getOpenAIAdapter } from './llm-adapters';
 import { WishfulSearchEngine } from './search-engine';
 
+import OpenAI from 'openai';
+
+const openai = new OpenAI();
+
 (async () => {
+  const LLMAdapter = getOpenAIAdapter(openai, {
+    model: 'gpt-4',
+  });
+
   const wishfulSearchEngine = await WishfulSearchEngine.create(
     'flights',
     TEST_FLIGHTS_DDL,
@@ -16,10 +25,12 @@ import { WishfulSearchEngine } from './search-engine';
     },
     flightToRows,
     {
-      userStartsQuery: false,
+      userStartsQuery: true,
       enableTodaysDate: true,
-      fewShotLearning: FLIGHTS_FEW_SHOT_LEARNING,
+      // fewShotLearning: FLIGHTS_FEW_SHOT_LEARNING,
+      fewShotLearning: [],
     },
+    LLMAdapter.callLLM,
     true,
     true,
   );
@@ -32,11 +43,15 @@ import { WishfulSearchEngine } from './search-engine';
 
   console.log('Inserted ', TEST_FLIGHTS.length, 'flights.');
 
-  const question = 'what are the longest flights landing before 8 pm?';
+  const question = 'Just economy flights.';
 
   console.log('Searching - ', question);
 
   const messages = wishfulSearchEngine.generateSearchMessages(question);
 
   console.log('Got messages - ', JSON.stringify(messages, null, 2));
+
+  console.log('Searching...');
+
+  const result = await wishfulSearchEngine.search(question);
 })();
