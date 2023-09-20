@@ -10,6 +10,7 @@ export class WishfulSearchEngine<ElementType> {
     query: string;
   }[] = [];
   private queryPrefix: string;
+  private latestIncompleteQuestion: string | null;
 
   static async create<ElementType>(
     name: string,
@@ -18,6 +19,7 @@ export class WishfulSearchEngine<ElementType> {
     objectToTabledRow: (rowObject: ElementType) => any[][],
     llmConfig: LLMConfig,
     callLLM: LLMCallFunc | null,
+    saveAndReturnObjects = true,
     saveHistory: boolean = true,
     enableDynamicEnums = true,
     sortEnumsByFrequency = false,
@@ -36,9 +38,11 @@ export class WishfulSearchEngine<ElementType> {
       name,
       tables,
       primaryKey,
-      enableDynamicEnums,
       llmConfig,
       callLLM,
+      saveAndReturnObjects,
+      saveHistory,
+      enableDynamicEnums,
       sortEnumsByFrequency,
     );
 
@@ -47,16 +51,19 @@ export class WishfulSearchEngine<ElementType> {
 
   private constructor(
     db: LLMSearcheableDatabase<ElementType>,
-    private readonly name: string,
+    readonly name: string,
     private readonly tables: DDLTable[],
     private readonly primaryKey: DBColumn,
-    private readonly enableDynamicEnums = true,
     private readonly llmConfig: LLMConfig,
     private readonly callLLM: LLMCallFunc | null,
-    private readonly sortEnumsByFrequency = false,
+    private readonly saveAndReturnObjects: boolean,
+    private readonly saveHistory: boolean,
+    private readonly enableDynamicEnums: boolean,
+    private readonly sortEnumsByFrequency: boolean,
   ) {
     this.db = db;
     this.queryPrefix = this.generateQueryPrefix();
+    this.latestIncompleteQuestion = null;
   }
 
   private generateQueryPrefix() {
@@ -158,6 +165,8 @@ export class WishfulSearchEngine<ElementType> {
   }
 
   generateSearchMessages(question: string) {
+    if (this.saveHistory) this.latestIncompleteQuestion = question;
+
     return generateLLMMessages(
       generateSQLDDL(this.tables, true),
       question,
@@ -167,6 +176,24 @@ export class WishfulSearchEngine<ElementType> {
       this.llmConfig.fewShotLearning,
       this.llmConfig.enableTodaysDate,
     );
+  }
+
+  searchWithPartialQuery(partialQuery: string) {
+    if (this.saveHistory && this.latestIncompleteQuestion)
+      this.history.push({
+        question: this.latestIncompleteQuestion,
+        query: partialQuery,
+      });
+
+    this.latestIncompleteQuestion = null;
+
+    const fullQuery = this.queryPrefix + ' ' + partialQuery;
+
+    console.log('Full query is ', fullQuery);
+
+    const results = this.db.rawQuery(fullQuery);
+
+    console.log('Got results - ', results);
   }
 
   async search(question: string) {
