@@ -11,6 +11,23 @@ export function generateSQLDDL(
     .join('\n\n');
 }
 
+/**
+ * Runs some basic checks on the structured DDL to make sure the
+ * querying and indexing can work properly.
+ * @param structuredDDL
+ */
+export function validateStructuredDDL(structuredDDL: DDLTable[]): boolean {
+  if (
+    structuredDDL.length &&
+    structuredDDL[0].columns.some((column) => !!column.foreignKey)
+  )
+    throw new Error(
+      'Primary (first) table in the structured ddl cannot have foreign key relationships',
+    );
+
+  return true;
+}
+
 function generateComment(column: DDLColumn) {
   let examples = '';
 

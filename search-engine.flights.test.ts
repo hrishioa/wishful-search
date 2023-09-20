@@ -1,5 +1,6 @@
 import {
   FLIGHTS_FEW_SHOT_LEARNING,
+  Flight,
   TEST_FLIGHTS,
   TEST_FLIGHTS_DDL,
   flightToRows,
@@ -31,13 +32,15 @@ const openai = new OpenAI();
       fewShotLearning: [],
     },
     LLMAdapter.callLLM,
+    (flight: Flight) => flight.uid,
+    true,
     true,
     true,
   );
 
   console.log('Started engine.');
 
-  const errors = wishfulSearchEngine.index(TEST_FLIGHTS);
+  const errors = wishfulSearchEngine.insert(TEST_FLIGHTS);
 
   console.log('Errors: ', errors);
 

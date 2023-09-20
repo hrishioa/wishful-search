@@ -1,6 +1,6 @@
 import { LLMSearcheableDatabase } from './db';
 import { generateLLMMessages } from './magic-search';
-import { generateSQLDDL } from './structured-ddl';
+import { generateSQLDDL, validateStructuredDDL } from './structured-ddl';
 import { DBColumn, DDLTable, LLMCallFunc, LLMConfig, QQTurn } from './types';
 
 /**
@@ -14,10 +14,7 @@ import { DBColumn, DDLTable, LLMCallFunc, LLMConfig, QQTurn } from './types';
  */
 export class WishfulSearchEngine<ElementType> {
   private db: LLMSearcheableDatabase<ElementType>;
-  private history: {
-    question: string;
-    query: string;
-  }[] = [];
+  private history: QQTurn[] = [];
   private queryPrefix: string;
   private latestIncompleteQuestion: string | null;
   private elementDict: {
@@ -70,6 +67,8 @@ export class WishfulSearchEngine<ElementType> {
     sortEnumsByFrequency = false,
     sqljsWasmURL?: string,
   ) {
+    validateStructuredDDL(tables);
+
     const db = await LLMSearcheableDatabase.create<ElementType>(
       generateSQLDDL(tables, true),
       name,
@@ -279,7 +278,7 @@ export class WishfulSearchEngine<ElementType> {
     if (this.saveHistory && this.latestIncompleteQuestion)
       this.history.push({
         question: this.latestIncompleteQuestion,
-        query: partialQuery,
+        partialQuery,
       });
 
     this.latestIncompleteQuestion = null;

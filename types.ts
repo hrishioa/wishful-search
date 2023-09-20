@@ -5,10 +5,10 @@ export type LLMCompatibleMessage = {
   content: string;
 };
 
-// Question - Query turn
+// Question - Query turn for few-shot learning. Queries are partial queries.
 export type QQTurn = {
   question: string;
-  query: string;
+  partialQuery: string;
 };
 
 //################################### DB
@@ -26,38 +26,39 @@ export type InsertionErroredRow = {
 // ################################# Structured DDL
 
 export type DDLColumnBase = {
-  name: string;
-  columnSpec: string;
-  staticExamples?: string[];
-  description: string;
+  name: string; // Name of the column
+  columnSpec: string; // SQlite type of the column
+  staticExamples?: string[]; // Statically provided examples of potential values in the column
+  description: string; // Description of the column
   foreignKey?: {
+    // Is this a foreign key? which table and column does it connect to? Only one-to-many are allowed.
     table: string;
     column: string;
   };
 };
 
 export type DDLColumnMeta = {
-  dynamicEnumSettings?:
-    | {
-        type: 'EXHAUSTIVE';
-        topK?: number;
+  dynamicEnumSettings?: // Settings for generating dynamic enums.
+  | {
+        type: 'EXHAUSTIVE'; // Provide an exhaustive list of all distinct values.
+        topK?: number; // Only save the top K values.
       }
     | {
-        type: 'MIN_MAX';
+        type: 'MIN_MAX'; // Provide a minimum and maximum range for the values found.
         format: 'DATE' | 'NUMBER';
       }
     | {
         type: 'EXHAUSTIVE_CHAR_LIMITED';
-        charLimit: number; // Making this a token limit would be better, but it makes us more model dependent and more expensive to compute
+        charLimit: number; // Total number of characters to limit the output to. Making this a token limit would be better, but it makes us more model dependent and more expensive to compute
       };
-  dynamicEnumData?:
-    | {
+  dynamicEnumData?: // Data (generated at runtime) for the enums.
+  | {
         type: 'EXAMPLES';
         examples: string[];
       }
     | {
         type: 'MIN_MAX';
-        exceptions: string[];
+        exceptions: string[]; // Exceptions to the range, like null
         min: string;
         max: string;
       };
