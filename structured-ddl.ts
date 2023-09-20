@@ -34,6 +34,19 @@ function generateComment(column: DDLColumn) {
   return commentPieces.length ? ` --${commentPieces.join(' ')}` : '';
 }
 
+/**
+ * Generates a string DDL in SQL from the structured DDL format. Does
+ * the following:
+ * * Convert each table and columns to their definitions
+ * * Adds descriptions from columns into comments
+ * * Uses either static examples or dynamic enums to illustrate
+ * data contents to the LLM
+ * * Creates cascading deleted foreign key references
+ * @param structuredDDL
+ * @param forLLM Whether this DDL is for the LLM or the database.
+ * If this is for the db, omits the comments and other fluff.
+ * @returns string DDL ready for passing to db or LLM.
+ */
 export function generateSQLTableDDL(
   structuredDDL: DDLTable,
   forLLM: boolean,
