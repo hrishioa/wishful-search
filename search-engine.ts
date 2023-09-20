@@ -11,15 +11,18 @@ export class WishfulSearchEngine<ElementType> {
   }[] = [];
   private queryPrefix: string;
   private latestIncompleteQuestion: string | null;
+  private elementDict: {
+    [key: string]: ElementType;
+  } | null;
 
   static async create<ElementType>(
     name: string,
     tables: DDLTable[],
     primaryKey: DBColumn,
-    objectToTabledRow: (rowObject: ElementType) => any[][],
+    objectToTabledRow: (element: ElementType) => any[][],
     llmConfig: LLMConfig,
     callLLM: LLMCallFunc | null,
-    saveAndReturnObjects = true,
+    getKeyFromObject: ((element: ElementType) => string) | null,
     saveHistory: boolean = true,
     enableDynamicEnums = true,
     sortEnumsByFrequency = false,
@@ -40,7 +43,7 @@ export class WishfulSearchEngine<ElementType> {
       primaryKey,
       llmConfig,
       callLLM,
-      saveAndReturnObjects,
+      getKeyFromObject,
       saveHistory,
       enableDynamicEnums,
       sortEnumsByFrequency,
@@ -56,7 +59,9 @@ export class WishfulSearchEngine<ElementType> {
     private readonly primaryKey: DBColumn,
     private readonly llmConfig: LLMConfig,
     private readonly callLLM: LLMCallFunc | null,
-    private readonly saveAndReturnObjects: boolean,
+    private readonly getKeyFromObject:
+      | ((element: ElementType) => string)
+      | null,
     private readonly saveHistory: boolean,
     private readonly enableDynamicEnums: boolean,
     private readonly sortEnumsByFrequency: boolean,
@@ -64,6 +69,7 @@ export class WishfulSearchEngine<ElementType> {
     this.db = db;
     this.queryPrefix = this.generateQueryPrefix();
     this.latestIncompleteQuestion = null;
+    this.elementDict = getKeyFromObject ? {} : null;
   }
 
   private generateQueryPrefix() {
@@ -156,6 +162,12 @@ export class WishfulSearchEngine<ElementType> {
 
     console.log('DDL is ', generateSQLDDL(this.tables, true));
 
+    if (this.getKeyFromObject && this.elementDict) {
+      for (const element of elements) {
+        this.elementDict[this.getKeyFromObject(element)] = element;
+      }
+    }
+
     return insertErrors;
   }
 
@@ -178,7 +190,7 @@ export class WishfulSearchEngine<ElementType> {
     );
   }
 
-  searchWithPartialQuery(partialQuery: string) {
+  searchWithPartialQuery(partialQuery: string): string[] | ElementType[] {
     if (this.saveHistory && this.latestIncompleteQuestion)
       this.history.push({
         question: this.latestIncompleteQuestion,
@@ -194,9 +206,17 @@ export class WishfulSearchEngine<ElementType> {
     const results = this.db.rawQuery(fullQuery);
 
     console.log('Got results - ', results);
+
+    // TODO: We presume it's a string[] here, need to verify
+
+    if (!this.getKeyFromObject || !this.elementDict) return results;
+    else
+      return results
+        .map((key) => this.elementDict![key])
+        .filter((element) => !!element);
   }
 
-  async search(question: string) {
+  async search(question: string): Promise<string[] | ElementType[]> {
     if (!this.callLLM)
       throw new Error(
         'No LLM call function provided. Use generateSearchMessages instead if you intent to make your own calls.',
@@ -210,14 +230,9 @@ export class WishfulSearchEngine<ElementType> {
 
     console.log('Got partial query ', partialQuery);
 
-    if (!partialQuery) return [];
+    if (!partialQuery)
+      throw new Error('Could not generate query from question with LLM');
 
-    const fullQuery = this.queryPrefix + ' ' + partialQuery;
-
-    console.log('Full query is ', fullQuery);
-
-    const results = this.db.rawQuery(fullQuery);
-
-    console.log('Got results - ', results);
+    return this.searchWithPartialQuery(partialQuery);
   }
 }
