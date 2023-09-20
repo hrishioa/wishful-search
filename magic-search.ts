@@ -49,7 +49,7 @@ export function generateLLMMessages(
   });
 
   if (fewShotLearningBatch) {
-    for (const { question, query } of fewShotLearningBatch) {
+    for (const { question, partialQuery } of fewShotLearningBatch) {
       messages.push({
         role: 'user',
         content: prompts.user(question, queryPrefix, userStartsQuery, false),
@@ -57,13 +57,13 @@ export function generateLLMMessages(
 
       messages.push({
         role: 'assistant',
-        content: prompts.assistant(query, queryPrefix, userStartsQuery),
+        content: prompts.assistant(partialQuery, queryPrefix, userStartsQuery),
       });
     }
   }
 
   if (history) {
-    for (const { question, query } of history) {
+    for (const { question, partialQuery } of history) {
       messages.push({
         role: 'user',
         content: prompts.user(question, queryPrefix, userStartsQuery, false),
@@ -71,7 +71,7 @@ export function generateLLMMessages(
 
       messages.push({
         role: 'assistant',
-        content: prompts.assistant(query, queryPrefix, userStartsQuery),
+        content: prompts.assistant(partialQuery, queryPrefix, userStartsQuery),
       });
     }
   }
