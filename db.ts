@@ -21,10 +21,13 @@ export class LLMSearcheableDatabase<RowObject> {
    * Creates a new database instance with own sqljs and tables.
    * @param strDDL table definitions in SQL, .e.g. 'CREATE TABLE...'
    * @param dbName Name of the database. Mainly for labelling.
-   * @param key The primary key of the entire database. Provide the name
-   * of a table and a column.
-   * @param objectToTabledRow Object-to-relational mapping. Accepts an object and returns an array of arrays, each top level array being the row for one table.
-   * @param sqljsWasmURL Provide your own sqljs wasm if you're client-side, or you would like to employ better caching.
+   * @param key The primary key of the entire database. Provide the
+   * name of a table and a column.
+   * @param objectToTabledRow Object-to-relational mapping. Accepts an
+   * object and returns an array of arrays, each top level array being
+   * the row for one table.
+   * @param sqljsWasmURL Provide your own sqljs wasm if you're
+   * client-side, or you would like to employ better caching.
    * @returns a new LLM searcheable database object.
    */
   static async create<RowObject>(
