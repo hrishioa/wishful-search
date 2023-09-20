@@ -172,6 +172,12 @@ export class WishfulSearchEngine<ElementType> {
   }
 
   remove(elementIds?: string[]) {
+    if (this.elementDict) {
+      if (elementIds)
+        for (const elementId of elementIds) delete this.elementDict[elementId];
+      else this.elementDict = {};
+    }
+
     if (elementIds) return this.db.delete(elementIds);
     else return this.db.clearDb();
   }

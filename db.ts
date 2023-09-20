@@ -6,10 +6,27 @@ import { DBColumn, InsertionErroredRow } from './types';
  * And yes I'm ending up building a bad ORM.
  */
 
+/**
+ * This class maintains the sqlite database instance to
+ * run queries against. Nothing particularly new here, except to
+ * manage the conversion of object to relational data, and to
+ * dynamically generate enum values for feeding back to the LLM.
+ */
 export class LLMSearcheableDatabase<RowObject> {
   private db: Database;
   private tableNames: string[];
 
+  /**
+   * Static factory function since we can't have async constructors.
+   * Creates a new database instance with own sqljs and tables.
+   * @param strDDL table definitions in SQL, .e.g. 'CREATE TABLE...'
+   * @param dbName Name of the database. Mainly for labelling.
+   * @param key The primary key of the entire database. Provide the name
+   * of a table and a column.
+   * @param objectToTabledRow Object-to-relational mapping. Accepts an object and returns an array of arrays, each top level array being the row for one table.
+   * @param sqljsWasmURL Provide your own sqljs wasm if you're client-side, or you would like to employ better caching.
+   * @returns a new LLM searcheable database object.
+   */
   static async create<RowObject>(
     strDDL: string,
     dbName: string,
@@ -59,6 +76,11 @@ export class LLMSearcheableDatabase<RowObject> {
     ];
   }
 
+  /**
+   * Dynamically retrieve the list of tables from the database.
+   * TODO: See if it's better to just use the structured DDL.
+   * @returns
+   */
   private getTableNames(): string[] {
     const result = this.db.exec(
       'SELECT name FROM sqlite_master WHERE type="table"',
@@ -68,7 +90,13 @@ export class LLMSearcheableDatabase<RowObject> {
     return tableNames;
   }
 
-  getEnums(column: DBColumn, sortByFrequency: boolean = false) {
+  /**
+   * Retrieves the distinct values being stored in a column.
+   * @param column table name and column name.
+   * @param sortByFrequency sorts the returned values by most frequent first.
+   * @returns string array of distinct values in the column,
+   */
+  getEnums(column: DBColumn, sortByFrequency: boolean = false): string[] {
     const query = sortByFrequency
       ? `SELECT ${column.column}, COUNT(${column.column}) as frequency
     FROM ${column.table}
@@ -89,20 +117,20 @@ export class LLMSearcheableDatabase<RowObject> {
     return enums;
   }
 
+  /**
+   * Execute a raw search query against the database.
+   * @param query string query, must start with 'SELECT'
+   * @returns
+   */
   rawQuery(query: string): string[] {
     const result = this.db.exec(query);
 
-    if (!result.length) return [];
+    if (!query.trim().toUpperCase().startsWith('SELECT'))
+      throw new Error('Raw Query to db must start with SELECT');
 
-    const keys = result[0].values.flat() as string[];
-
-    return keys;
-  }
-
-  rawQueryKeys(key: DBColumn, query: string): string[] {
-    const fullSQLQuery = `SELECT ${key.column} FROM ${key.table} WHERE ${query}`;
-
-    const result = this.db.exec(fullSQLQuery);
+    // TODO: Good enough security for now, to revisit later
+    if (query.trim().indexOf(';') !== -1)
+      throw new Error('Raw Query to db must be a single statement');
 
     if (!result.length) return [];
 
@@ -110,6 +138,19 @@ export class LLMSearcheableDatabase<RowObject> {
 
     return keys;
   }
+
+  // TODO: Consider removing
+  // rawQueryKeys(key: DBColumn, query: string): string[] {
+  //   const fullSQLQuery = `SELECT ${key.column} FROM ${key.table} WHERE ${query}`;
+
+  //   const result = this.db.exec(fullSQLQuery);
+
+  //   if (!result.length) return [];
+
+  //   const keys = result[0].values.flat() as string[];
+
+  //   return keys;
+  // }
 
   private getColumnCount(tableName: string): number {
     return this.db.exec(
@@ -117,6 +158,10 @@ export class LLMSearcheableDatabase<RowObject> {
     )[0].values[0][0] as number;
   }
 
+  /**
+   * Delete specified keys from the database.
+   * @param keys
+   */
   delete(keys: string[]) {
     const placeholders = keys.map((key) => '?').join(',');
 
@@ -125,11 +170,19 @@ export class LLMSearcheableDatabase<RowObject> {
     this.db.run(query, keys);
   }
 
+  /**
+   * Insert elements into the database for searching.
+   * @param elements Array of elements
+   * @param errorOnInvalidRows Whether to throw an error and halt
+   * the entire db transaction when one object fails to insert.
+   * Otherwise, a list of errors in returned as an array.
+   * @returns List of failed objects, with index and error.
+   */
   insert(
-    objects: RowObject[],
+    elements: RowObject[],
     errorOnInvalidRows = false,
   ): InsertionErroredRow[] {
-    const rows = objects.map((object) => this.objectToTabledRow(object));
+    const rows = elements.map((object) => this.objectToTabledRow(object));
 
     const validRows = rows.filter(
       (row) => row.length === this.tableNames.length,
@@ -144,7 +197,7 @@ export class LLMSearcheableDatabase<RowObject> {
 
     const invalidRows: InsertionErroredRow[] = [];
 
-    for (const objectRows of rows) {
+    for (const elementRows of rows) {
       for (let i = 0; i < this.tableNames.length; i++) {
         const currentTable = this.tableNames[i];
         const columnCount = this.getColumnCount(currentTable);
@@ -158,7 +211,7 @@ export class LLMSearcheableDatabase<RowObject> {
         try {
           this.db.run('BEGIN');
 
-          const tableRows = objectRows[i];
+          const tableRows = elementRows[i];
 
           tableRows.forEach((row) => {
             try {
@@ -186,6 +239,9 @@ export class LLMSearcheableDatabase<RowObject> {
     return invalidRows;
   }
 
+  /**
+   * Clear and reset the entire database completely.
+   */
   clearDb() {
     this.db.close();
     this.db = new this.sqljsSQL.Database();
