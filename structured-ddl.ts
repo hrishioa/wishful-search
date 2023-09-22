@@ -17,6 +17,11 @@ export function generateSQLDDL(
  * @param structuredDDL
  */
 export function validateStructuredDDL(structuredDDL: DDLTable[]): boolean {
+  if (!structuredDDL.length || !structuredDDL[0])
+    throw new Error(
+      'No tables found in structured DDL, or missing primary table.',
+    );
+
   if (
     structuredDDL.length &&
     structuredDDL[0].columns.some((column) => !!column.foreignKey)

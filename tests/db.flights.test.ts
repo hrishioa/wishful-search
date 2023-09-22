@@ -1,11 +1,11 @@
-import { LLMSearcheableDatabase } from './db';
-import { generateSQLDDL } from './structured-ddl';
+import { LLMSearcheableDatabase } from '../db';
+import { generateSQLDDL } from '../structured-ddl';
 import {
   Flight,
   TEST_FLIGHTS,
   TEST_FLIGHTS_DDL,
   flightToRows,
-} from './data/flight-data';
+} from '../data/flight-data';
 
 (async () => {
   const db = await LLMSearcheableDatabase.create<Flight>(

@@ -15,6 +15,8 @@ tmp
 
 data
 
+lib
+
 # Build
 public/css/main.css
 

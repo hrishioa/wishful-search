@@ -57,4 +57,6 @@ const openai = new OpenAI();
   console.log('Searching...');
 
   const result = await wishfulSearchEngine.search(question);
+
+  console.log('Got results - ', JSON.stringify(result, null, 2));
 })();

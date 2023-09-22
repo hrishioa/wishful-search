@@ -33,6 +33,7 @@ export function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
         (completion &&
           completion.choices &&
           completion.choices.length &&
+          completion.choices[0] &&
           completion.choices[0].message.content) ||
         null
       );

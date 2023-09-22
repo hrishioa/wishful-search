@@ -1,7 +1,12 @@
-import { DBColumn, LLMCompatibleMessage, QQTurn } from './types';
+import { LLMCompatibleMessage, QQTurn } from './types';
+
+/**
+ * This is the primary collection of prompt templates that makes
+ * wishful-search work.
+ */
 
 // prettier-ignore
-const prompts = {
+const searchPrompt = {
   system: (ddl: string, dateStr?: string) =>
 `You are a SQLite SQL generator that helps users answer questions from the tables provided. Here are the table definitions:
 
@@ -45,19 +50,28 @@ export function generateLLMMessages(
 
   messages.push({
     role: 'system',
-    content: prompts.system(dbDDL, dateStr),
+    content: searchPrompt.system(dbDDL, dateStr),
   });
 
   if (fewShotLearningBatch) {
     for (const { question, partialQuery } of fewShotLearningBatch) {
       messages.push({
         role: 'user',
-        content: prompts.user(question, queryPrefix, userStartsQuery, false),
+        content: searchPrompt.user(
+          question,
+          queryPrefix,
+          userStartsQuery,
+          false,
+        ),
       });
 
       messages.push({
         role: 'assistant',
-        content: prompts.assistant(partialQuery, queryPrefix, userStartsQuery),
+        content: searchPrompt.assistant(
+          partialQuery,
+          queryPrefix,
+          userStartsQuery,
+        ),
       });
     }
   }
@@ -66,19 +80,28 @@ export function generateLLMMessages(
     for (const { question, partialQuery } of history) {
       messages.push({
         role: 'user',
-        content: prompts.user(question, queryPrefix, userStartsQuery, false),
+        content: searchPrompt.user(
+          question,
+          queryPrefix,
+          userStartsQuery,
+          false,
+        ),
       });
 
       messages.push({
         role: 'assistant',
-        content: prompts.assistant(partialQuery, queryPrefix, userStartsQuery),
+        content: searchPrompt.assistant(
+          partialQuery,
+          queryPrefix,
+          userStartsQuery,
+        ),
       });
     }
   }
 
   messages.push({
     role: 'user',
-    content: prompts.user(
+    content: searchPrompt.user(
       question,
       queryPrefix,
       userStartsQuery,
@@ -89,9 +112,29 @@ export function generateLLMMessages(
   if (!userStartsQuery && !fewShotLearningBatch?.length) {
     messages.push({
       role: 'assistant',
-      content: prompts.assistant('', queryPrefix, userStartsQuery),
+      content: searchPrompt.assistant('', queryPrefix, userStartsQuery),
     });
   }
 
   return messages;
 }
+
+// ############################ STARTING POINT
+
+// // prettier-ignore
+// const startingPointPrompts = {
+//   typeGenerationS: (exampleObject: any, elementName: string) =>
+// `EXAMPLE:
+// \`\`\`typescript
+// export const EXAMPLE_${elementName.toUpperCase()}: ${elementName} = ${JSON.stringify(exampleObject, null, 2)}`,
+//   typeGenerationU: () =>
+// `Outline a typespec in typescript for the example object provided.`,
+//   tableCotGeneration: () =>
+// `GUIDELINES:
+// 1. Prefer flat tables when necessary, instead of making additional tables.
+// 2. Encode datatypes in the column names when possible.
+
+// Talk me through how you would structure one of more Sqlite tables to hold this information following GUIDELINES, inferring things like datatypes, what information is being managed, what decisions you would make, step-by-step. Then outline the overall structure of the tables and which columns would need comments in the final DDL to clear any confusion. Be exhaustive, and explain your decisions. Skip primary keys when they're not really needed.`,
+//   tableGeneration: () =>
+// `Please generate a structured DDL that can be `
+// }

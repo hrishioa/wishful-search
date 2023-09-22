@@ -88,7 +88,8 @@ export class LLMSearcheableDatabase<RowObject> {
     const result = this.db.exec(
       'SELECT name FROM sqlite_master WHERE type="table"',
     );
-    if (!result.length) throw new Error('No tables found in database');
+    if (!result || !result.length || !result[0])
+      throw new Error('No tables found in database');
     const tableNames = result[0].values.flat() as string[];
     return tableNames;
   }
@@ -107,11 +108,9 @@ export class LLMSearcheableDatabase<RowObject> {
     ORDER BY frequency DESC;`
       : `SELECT DISTINCT ${column.column} FROM ${column.table}`;
 
-    const result = this.db.exec(
-      `SELECT DISTINCT ${column.column} FROM ${column.table}`,
-    );
+    const result = this.db.exec(query);
 
-    if (!result.length) return [];
+    if (!result.length || !result[0]) return [];
 
     const enums = sortByFrequency
       ? (result[0].values.map((val) => val[0]) as string[])
@@ -128,14 +127,16 @@ export class LLMSearcheableDatabase<RowObject> {
   rawQuery(query: string): string[] {
     const result = this.db.exec(query);
 
-    if (!query.trim().toUpperCase().startsWith('SELECT'))
+    query = query.split(';')[0]!.trim();
+
+    if (!query.toUpperCase().startsWith('SELECT'))
       throw new Error('Raw Query to db must start with SELECT');
 
     // TODO: Good enough security for now, to revisit later
-    if (query.trim().indexOf(';') !== -1)
+    if (query.indexOf(';') !== -1)
       throw new Error('Raw Query to db must be a single statement');
 
-    if (!result.length) return [];
+    if (!result.length || !result[0]) return [];
 
     const keys = result[0].values.flat() as string[];
 
@@ -156,9 +157,14 @@ export class LLMSearcheableDatabase<RowObject> {
   // }
 
   private getColumnCount(tableName: string): number {
-    return this.db.exec(
+    const result = this.db.exec(
       `SELECT COUNT(*) FROM pragma_table_info('${tableName}')`,
-    )[0].values[0][0] as number;
+    );
+
+    if (!result || !result.length || !result[0])
+      throw new Error('Tried to get columns on invalid db');
+
+    return result[0].values[0]![0] as number;
   }
 
   /**
@@ -166,7 +172,7 @@ export class LLMSearcheableDatabase<RowObject> {
    * @param keys
    */
   delete(keys: string[]) {
-    const placeholders = keys.map((key) => '?').join(',');
+    const placeholders = keys.map((_) => '?').join(',');
 
     const query = `DELETE FROM ${this.key.table} WHERE ${this.key.column} IN (${placeholders})`;
 
@@ -203,7 +209,7 @@ export class LLMSearcheableDatabase<RowObject> {
     for (const elementRows of rows) {
       for (let i = 0; i < this.tableNames.length; i++) {
         const currentTable = this.tableNames[i];
-        const columnCount = this.getColumnCount(currentTable);
+        const columnCount = this.getColumnCount(currentTable!);
 
         const stmt = this.db.prepare(
           `INSERT INTO ${currentTable} VALUES (${Array(columnCount)
@@ -216,7 +222,7 @@ export class LLMSearcheableDatabase<RowObject> {
 
           const tableRows = elementRows[i];
 
-          tableRows.forEach((row) => {
+          tableRows!.forEach((row) => {
             try {
               stmt.bind(row);
               stmt.step();

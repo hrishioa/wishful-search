@@ -216,7 +216,7 @@ export class WishfulSearchEngine<ElementType> {
    * @returns A list of indices and errros for the objects that failed.
    */
   insert(elements: ElementType[], errorOnInvalidData = false) {
-    const insertErrors = this.db.insert(elements);
+    const insertErrors = this.db.insert(elements, errorOnInvalidData);
 
     this.computeEnums();
 
@@ -289,15 +289,13 @@ export class WishfulSearchEngine<ElementType> {
 
     const results = this.db.rawQuery(fullQuery);
 
-    console.log('Got results - ', results);
-
     // TODO: We presume it's a string[] here, need to verify
 
     if (!this.getKeyFromObject || !this.elementDict) return results;
     else
       return results
         .map((key) => this.elementDict![key])
-        .filter((element) => !!element);
+        .filter((element) => !!element) as ElementType[];
   }
 
   /**
