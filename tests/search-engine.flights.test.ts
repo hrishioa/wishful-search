@@ -1,19 +1,19 @@
 import {
-  FLIGHTS_FEW_SHOT_LEARNING,
+  // FLIGHTS_FEW_SHOT_LEARNING,
   Flight,
   TEST_FLIGHTS,
   TEST_FLIGHTS_DDL,
   flightToRows,
 } from './data/flight-data';
-import { getOpenAIAdapter } from '../llm-adapters';
-import { WishfulSearchEngine } from '../search-engine';
+import LLMAdapters from '../src/llm-adapters';
+import { WishfulSearchEngine } from '../src/search-engine';
 
 import OpenAI from 'openai';
 
 const openai = new OpenAI();
 
 (async () => {
-  const LLMAdapter = getOpenAIAdapter(openai, {
+  const LLMAdapter = LLMAdapters.getOpenAIAdapter(openai, {
     model: 'gpt-4',
   });
 

@@ -26,7 +26,7 @@ import {
 
   console.log('Getting all - ');
 
-  const all = db.rawQueryKeys({ table: 'Flights', column: 'uid' }, '1=1');
+  const all = db.rawQuery('SELECT uid from Flights WHERE 1=1');
 
   console.log('Got ', all.length, ' keys. Heres 10: ', all.slice(0, 10));
 
@@ -36,7 +36,7 @@ import {
 
   db.delete([keyToDelete]);
 
-  const all2 = db.rawQueryKeys({ table: 'Flights', column: 'uid' }, '1=1');
+  const all2 = db.rawQuery('SELECT uid from Flights WHERE 1=1');
 
   console.log('Getting all - there are now ', all2.length, ' keys.');
 

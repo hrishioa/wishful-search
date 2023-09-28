@@ -143,19 +143,6 @@ export class LLMSearcheableDatabase<RowObject> {
     return keys;
   }
 
-  // TODO: Consider removing
-  // rawQueryKeys(key: DBColumn, query: string): string[] {
-  //   const fullSQLQuery = `SELECT ${key.column} FROM ${key.table} WHERE ${query}`;
-
-  //   const result = this.db.exec(fullSQLQuery);
-
-  //   if (!result.length) return [];
-
-  //   const keys = result[0].values.flat() as string[];
-
-  //   return keys;
-  // }
-
   private getColumnCount(tableName: string): number {
     const result = this.db.exec(
       `SELECT COUNT(*) FROM pragma_table_info('${tableName}')`,
