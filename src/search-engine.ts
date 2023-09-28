@@ -159,7 +159,7 @@ export class WishfulSearchEngine<ElementType> {
         ) {
           const numericEnums = enums
             .map((enumValue) => parseFloat(enumValue))
-            .filter((enumValue) => !isNaN(enumValue)); // TODO: Test for dates separately
+            .filter((enumValue) => !isNaN(enumValue));
 
           const minVal = Math.min(...numericEnums);
           const maxVal = Math.max(...numericEnums);
@@ -180,7 +180,7 @@ export class WishfulSearchEngine<ElementType> {
           enumSettings.type === 'MIN_MAX' &&
           enumSettings.format === 'DATE'
         ) {
-          const numericEnums = enums.map((enumValue) => Date.parse(enumValue)); // TODO: Copilot generated, test later
+          const numericEnums = enums.map((enumValue) => Date.parse(enumValue));
           column.dynamicEnumData = {
             type: 'MIN_MAX',
             exceptions: enums.filter((enumValue) =>
@@ -288,8 +288,6 @@ export class WishfulSearchEngine<ElementType> {
     console.log('Full query is ', fullQuery);
 
     const results = this.db.rawQuery(fullQuery);
-
-    // TODO: We presume it's a string[] here, need to verify
 
     if (!this.getKeyFromObject || !this.elementDict) return results;
     else

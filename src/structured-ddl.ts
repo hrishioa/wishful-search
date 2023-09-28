@@ -1,5 +1,3 @@
-// TODO: Make sure it's one table with joins outward
-
 import { DDLColumn, DDLTable } from './types';
 
 export function generateSQLDDL(

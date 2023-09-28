@@ -132,7 +132,6 @@ export class LLMSearcheableDatabase<RowObject> {
     if (!query.toUpperCase().startsWith('SELECT'))
       throw new Error('Raw Query to db must start with SELECT');
 
-    // TODO: Good enough security for now, to revisit later
     if (query.indexOf(';') !== -1)
       throw new Error('Raw Query to db must be a single statement');
 

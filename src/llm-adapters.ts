@@ -1,5 +1,3 @@
-// TODO: Remove
-// import type OpenAI from 'openai';
 import {
   CommonLLMParameters,
   LLMCallFunc,
