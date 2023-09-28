@@ -1,0 +1,16 @@
+.git/
+.github/
+.gitlab/
+.circleci/
+
+tsconfig.json
+webpack.config.js
+yarn.lock
+.editorconfig
+.npmrc
+.prettierrc
+.vscode
+
+tests/
+
+node_modules

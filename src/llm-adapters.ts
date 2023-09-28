@@ -1,4 +1,5 @@
-import type OpenAI from 'openai';
+// TODO: Remove
+// import type OpenAI from 'openai';
 import {
   CommonLLMParameters,
   LLMCallFunc,
@@ -6,7 +7,24 @@ import {
   LLMConfig,
 } from './types';
 
-export function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
+interface MinimalOpenAIModule {
+  chat: {
+    completions: {
+      create: (params: {
+        messages: LLMCompatibleMessage[];
+        model: string;
+        temperature?: number;
+      }) => Promise<{
+        choices: { message: { content: string | null } }[];
+      }>;
+    };
+  };
+}
+
+function getOpenAIAdapter(
+  openai: MinimalOpenAIModule,
+  params?: CommonLLMParameters,
+) {
   const DEFAULT_OPENAI_PARAMS = {
     model: 'gpt-3.5-turbo',
     temperature: 0,
@@ -42,3 +60,9 @@ export function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
 
   return adapter;
 }
+
+const adapters = {
+  getOpenAIAdapter,
+};
+
+export default adapters;

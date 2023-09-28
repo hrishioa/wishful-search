@@ -1,13 +1,31 @@
 {
+  "author": "Hrishi Olickel",
+  "name": "wishful-search",
+  "version": "0.0.2",
+  "license": "MIT",
+  "main": "dist/node/index.js",
+  "module": "dist/node/index.js",
+  "types": "dist/node/index.d.ts",
+  "browser": "dist/browser/wishful-search.js",
   "dependencies": {
     "sql.js": "^1.8.0"
+  },
+  "scripts": {
+    "prebuild": "rimraf dist/*",
+    "build:node": "tsc",
+    "build:browser": "webpack --mode production",
+    "build": "npm run build:node && npm run build:browser"
   },
   "devDependencies": {
     "@types/node": "^20.5.7",
     "@types/sql.js": "^1.4.4",
     "@types/terminal-kit": "^2.5.1",
     "openai": "^4.8.0",
+    "rimraf": "^5.0.5",
     "terminal-kit": "^3.0.0",
-    "typescript": "^5.2.2"
+    "ts-loader": "^9.4.4",
+    "typescript": "^5.2.2",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4"
   }
 }

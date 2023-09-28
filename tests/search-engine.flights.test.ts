@@ -5,8 +5,8 @@ import {
   TEST_FLIGHTS_DDL,
   flightToRows,
 } from './data/flight-data';
-import { getOpenAIAdapter } from './llm-adapters';
-import { WishfulSearchEngine } from './search-engine';
+import { getOpenAIAdapter } from '../llm-adapters';
+import { WishfulSearchEngine } from '../search-engine';
 
 import OpenAI from 'openai';
 
