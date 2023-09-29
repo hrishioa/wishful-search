@@ -17,6 +17,7 @@
     "build": "npm run build:node && npm run build:browser"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.6.2",
     "@types/node": "^20.5.7",
     "@types/sql.js": "^1.4.4",
     "@types/terminal-kit": "^2.5.1",
