@@ -44,7 +44,6 @@ function getClaudeAdapter(
   };
 
   const DEFAULT_CLAUDE_LLM_CONFIG: LLMConfig = {
-    userStartsQuery: false,
     enableTodaysDate: true,
     fewShotLearning: [],
   };
@@ -54,16 +53,24 @@ function getClaudeAdapter(
     callLLM: LLMCallFunc;
   } = {
     llmConfig: DEFAULT_CLAUDE_LLM_CONFIG,
-    callLLM: async function callLLM(messages: LLMCompatibleMessage[]) {
-      const prompt = messages
+    callLLM: async function callLLM(
+      messages: LLMCompatibleMessage[],
+      queryPrefix: string,
+    ) {
+      let prompt = messages
         .map((message) =>
           message.role === 'user'
-            ? `${humanPromptTag}: ${message.content}`
+            ? `${humanPromptTag} ${message.content}`
             : message.role === 'assistant'
-            ? `${assistantPromptTag}: ${message.content}`
-            : `${humanPromptTag}: <system>${message.content}</system>`,
+            ? `${assistantPromptTag} ${message.content}`
+            : `${humanPromptTag} <system>${message.content}</system>`,
         )
-        .join('\n\n');
+        .join('');
+
+      if (messages[messages.length - 1]!.role !== 'assistant')
+        prompt += `${assistantPromptTag} ${queryPrefix}`;
+
+      console.log('Prompt - ', prompt);
 
       const completion = await anthropic.completions.create({
         prompt,
@@ -88,7 +95,6 @@ function getOpenAIAdapter(
   };
 
   const DEFAULT_OPENAI_LLM_CONFIG: LLMConfig = {
-    userStartsQuery: true,
     enableTodaysDate: true,
     fewShotLearning: [],
   };
@@ -98,7 +104,10 @@ function getOpenAIAdapter(
     callLLM: LLMCallFunc;
   } = {
     llmConfig: DEFAULT_OPENAI_LLM_CONFIG,
-    callLLM: async function callLLM(messages: LLMCompatibleMessage[]) {
+    callLLM: async function callLLM(
+      messages: LLMCompatibleMessage[],
+      queryPrefix: string,
+    ) {
       if (messages.length < 1 || !messages[messages.length - 1]) return null;
 
       if (messages[messages.length - 1]!.role === 'assistant') {

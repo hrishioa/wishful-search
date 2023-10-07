@@ -28,16 +28,14 @@ RULES:
 \"\"\"
 
 Provide an appropriate SQLite Query to return the keys tp answer the user's question. Only filter by the things the user asked for.` ,
-  user: (question: string, queryPrefix: string, userStartsQuery: boolean, firstQuestion: boolean) => userStartsQuery ? `${firstQuestion ? 'Scratch that - new filters. ': ''}${question}\n\nQuery: ${queryPrefix}` : `${firstQuestion ? 'Scratch that - new filters. ': ''}${question}`,
-  assistant: (query: string, queryPrefix: string, userStartsQuery: boolean) =>
-    userStartsQuery ? `${query}` : `${queryPrefix} ${query}`,
+  user: (question: string, firstQuestion: boolean) => `${firstQuestion ? 'Scratch that - new filters. ': ''}${question}`,
+  assistant: (query: string, queryPrefix: string) => `${queryPrefix} ${query}`,
 }
 
 export function generateLLMMessages(
   dbDDL: string,
   question: string,
   queryPrefix: string,
-  userStartsQuery: boolean,
   history: QQTurn[],
   fewShotLearningBatch?: QQTurn[],
   enableTodaysDate?: boolean,
@@ -57,21 +55,12 @@ export function generateLLMMessages(
     for (const { question, partialQuery } of fewShotLearningBatch) {
       messages.push({
         role: 'user',
-        content: searchPrompt.user(
-          question,
-          queryPrefix,
-          userStartsQuery,
-          false,
-        ),
+        content: searchPrompt.user(question, false),
       });
 
       messages.push({
         role: 'assistant',
-        content: searchPrompt.assistant(
-          partialQuery,
-          queryPrefix,
-          userStartsQuery,
-        ),
+        content: searchPrompt.assistant(partialQuery, queryPrefix),
       });
     }
   }
@@ -80,41 +69,26 @@ export function generateLLMMessages(
     for (const { question, partialQuery } of history) {
       messages.push({
         role: 'user',
-        content: searchPrompt.user(
-          question,
-          queryPrefix,
-          userStartsQuery,
-          false,
-        ),
+        content: searchPrompt.user(question, false),
       });
 
       messages.push({
         role: 'assistant',
-        content: searchPrompt.assistant(
-          partialQuery,
-          queryPrefix,
-          userStartsQuery,
-        ),
+        content: searchPrompt.assistant(partialQuery, queryPrefix),
       });
     }
   }
 
   messages.push({
     role: 'user',
-    content: searchPrompt.user(
-      question,
-      queryPrefix,
-      userStartsQuery,
-      history.length > 0 ? false : true,
-    ),
+    content: searchPrompt.user(question, history.length > 0 ? false : true),
   });
 
-  if (!userStartsQuery && !fewShotLearningBatch?.length) {
+  if (!fewShotLearningBatch?.length)
     messages.push({
       role: 'assistant',
-      content: searchPrompt.assistant('', queryPrefix, userStartsQuery),
+      content: queryPrefix,
     });
-  }
 
   return messages;
 }

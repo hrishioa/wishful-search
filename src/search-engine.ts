@@ -32,8 +32,6 @@ export class WishfulSearchEngine<ElementType> {
    * array being the row for one table.
    * @param llmConfig configuration how the llm is used
    * to generate queries.
-   * * UserStartsQuery indicates whether the query prefix can be placed
-   *  in the assistant's mouth instead of the user's.
    * * enableTodaysDate adds the current date to the prompt.
    * * fewShotLearning is a dataset of prior examples.
    * @param callLLM Use a generator function from llm-adapters.ts
@@ -260,7 +258,6 @@ export class WishfulSearchEngine<ElementType> {
       generateSQLDDL(this.tables, true),
       question,
       this.queryPrefix,
-      this.llmConfig.userStartsQuery,
       this.history,
       this.llmConfig.fewShotLearning,
       this.llmConfig.enableTodaysDate,
@@ -314,12 +311,16 @@ export class WishfulSearchEngine<ElementType> {
 
     console.log('Calling with messages ', JSON.stringify(messages, null, 2));
 
-    const partialQuery = await this.callLLM(messages);
-
-    console.log('Got partial query ', partialQuery);
+    let partialQuery = await this.callLLM(messages, this.queryPrefix);
 
     if (!partialQuery)
       throw new Error('Could not generate query from question with LLM');
+
+    if (partialQuery.toLowerCase().startsWith(this.queryPrefix.toLowerCase())) {
+      partialQuery = partialQuery.substring(this.queryPrefix.length).trim();
+    }
+
+    console.log('Got partial query ', partialQuery);
 
     return this.searchWithPartialQuery(partialQuery);
   }

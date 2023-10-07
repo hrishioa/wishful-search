@@ -81,11 +81,11 @@ export type CommonLLMParameters = {
 };
 
 export type LLMConfig = {
-  userStartsQuery: boolean;
   enableTodaysDate: boolean;
   fewShotLearning?: QQTurn[];
 };
 
 export type LLMCallFunc = (
   messages: LLMCompatibleMessage[],
+  queryPrefix: string,
 ) => Promise<string | null>;
