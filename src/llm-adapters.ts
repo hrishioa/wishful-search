@@ -41,7 +41,11 @@ export function getMistralAdapter(params?: CommonLLMParameters) {
       .map((message, index) =>
         message.role === 'assistant'
           ? `${message.content}${index < messages.length - 1 ? `</s>` : ''}`
-          : `<s>[INST] ${
+          : `${
+              index > 0 && messages[index - 1]!.role !== 'assistant'
+                ? ''
+                : '<s>'
+            }[INST] ${
               message.role === 'system'
                 ? `<system>${message.content}</system>`
                 : message.content
@@ -88,10 +92,12 @@ export function getMistralAdapter(params?: CommonLLMParameters) {
         params?.temperature ?? DEFAULT_MISTRAL_PARAMS.temperature,
       );
 
+      console.log('Output:\n\n');
       for await (const token of response) {
-        console.log('Received ', token);
+        if (token.type === 'token') process.stdout.write(token.token);
 
         if (token.type === 'completeMessage') {
+          console.log('\n\n');
           return token.message.split('</s>')[0] || null;
         }
       }

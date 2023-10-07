@@ -76,15 +76,13 @@ export async function* callOllama(
             completeMessage += parsedObject.response;
           }
 
-          if (parsedObject.done) {
+          if (parsedObject.done || completeMessage.indexOf('</s>') !== -1) {
             yield {
               type: 'completeMessage',
               message: completeMessage,
             };
             return;
           }
-
-          console.log('New message:', parsedObject);
 
           // Remove the parsed object from the buffer
           textBuffer = textBuffer.slice(closingBraceIndex + 1);

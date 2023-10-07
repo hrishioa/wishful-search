@@ -404,6 +404,12 @@ export class WishfulSearchEngine<ElementType> {
       }
     }
 
+    if (verbose)
+      console.log(
+        'Generated examples - ',
+        JSON.stringify(fewShotLearningBatch, null, 2),
+      );
+
     this.history = historyBackup;
     this.callLLM = callLLMBackup;
 
