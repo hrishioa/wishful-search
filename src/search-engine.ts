@@ -1,7 +1,15 @@
 import { LLMSearcheableDatabase } from './db';
 import { generateLLMMessages } from './magic-search';
 import { generateSQLDDL, validateStructuredDDL } from './structured-ddl';
-import { DBColumn, DDLTable, LLMCallFunc, LLMConfig, QQTurn } from './types';
+import {
+  DBColumn,
+  DDLTable,
+  FewShotGenerationConfig,
+  LLMCallFunc,
+  LLMCompatibleMessage,
+  LLMConfig,
+  QQTurn,
+} from './types';
 
 /**
  * This class runs wishful search. With the right config, it can:
@@ -17,6 +25,7 @@ export class WishfulSearchEngine<ElementType> {
   private history: QQTurn[] = [];
   private queryPrefix: string;
   private latestIncompleteQuestion: string | null;
+  private callLLM: LLMCallFunc | null;
   private elementDict: {
     [key: string]: ElementType;
   } | null;
@@ -97,7 +106,7 @@ export class WishfulSearchEngine<ElementType> {
     private readonly tables: DDLTable[],
     private readonly primaryKey: DBColumn,
     private readonly llmConfig: LLMConfig,
-    private readonly callLLM: LLMCallFunc | null,
+    callLLM: LLMCallFunc | null,
     private readonly getKeyFromObject:
       | ((element: ElementType) => string)
       | null,
@@ -109,6 +118,7 @@ export class WishfulSearchEngine<ElementType> {
     this.queryPrefix = this.generateQueryPrefix();
     this.latestIncompleteQuestion = null;
     this.elementDict = getKeyFromObject ? {} : null;
+    this.callLLM = callLLM;
   }
 
   /**
@@ -294,22 +304,16 @@ export class WishfulSearchEngine<ElementType> {
   }
 
   /**
-   * Full search function that generates the LLM messages, calls
-   * the LLM, and returns either a list of keys or elements depending
-   * on instantiating config.
-   * @param question Search question from the user.
-   * @returns If getKeyFromObject is set, this returns a list of elements.
-   * If not, returns a list of keys you can use yourself.
+   * Calls the LLM with generated search messages to get the partial query.
+   * Does some additional string processing as needed, to make sure we have a partial query.
+   * @param messages
+   * @returns
    */
-  async search(question: string): Promise<string[] | ElementType[]> {
+  async getQueryFromLLM(messages: LLMCompatibleMessage[]) {
     if (!this.callLLM)
       throw new Error(
         'No LLM call function provided. Use generateSearchMessages instead if you intent to make your own calls.',
       );
-
-    const messages = this.generateSearchMessages(question);
-
-    console.log('Calling with messages ', JSON.stringify(messages, null, 2));
 
     let partialQuery = await this.callLLM(messages, this.queryPrefix);
 
@@ -320,8 +324,89 @@ export class WishfulSearchEngine<ElementType> {
       partialQuery = partialQuery.substring(this.queryPrefix.length).trim();
     }
 
-    console.log('Got partial query ', partialQuery);
+    return partialQuery;
+  }
+
+  /**
+   * Full search function that generates the LLM messages, calls
+   * the LLM, and returns either a list of keys or elements depending
+   * on instantiating config.
+   * @param question Search question from the user.
+   * @returns If getKeyFromObject is set, this returns a list of elements.
+   * If not, returns a list of keys you can use yourself.
+   */
+  async search(question: string): Promise<string[] | ElementType[]> {
+    const messages = this.generateSearchMessages(question);
+
+    console.log('Calling with messages ', JSON.stringify(messages, null, 2));
+
+    const partialQuery = await this.getQueryFromLLM(messages);
 
     return this.searchWithPartialQuery(partialQuery);
+  }
+
+  async autoGenerateFewShot(
+    fewShotConfig: FewShotGenerationConfig,
+    noQuestionsWithZeroResults: boolean = false,
+    errorOnInvalidQuestions: boolean = false,
+    verbose: boolean = false,
+  ) {
+    if (this.latestIncompleteQuestion)
+      throw new Error(
+        'It seems there is a search in progress, or partially completed. FewShot generation is best done at the very beginning, after seeding your data.',
+      );
+
+    const historyBackup = this.history;
+    const callLLMBackup = this.callLLM;
+    this.history = [];
+    this.callLLM = fewShotConfig.callLLM;
+
+    let fewShotLearningBatch: QQTurn[] = [];
+
+    for (const question of fewShotConfig.questions) {
+      try {
+        if (verbose) console.log('Asking ', question.question);
+
+        if (question.clearHistory) this.history = [];
+
+        const partialQuery = await this.getQueryFromLLM(
+          this.generateSearchMessages(question.question),
+        );
+
+        const results = this.searchWithPartialQuery(partialQuery);
+
+        if (verbose)
+          console.log(
+            `Got ${results.length} results with partial query ${partialQuery}.`,
+          );
+
+        if (!noQuestionsWithZeroResults || results.length)
+          fewShotLearningBatch.push({
+            question: question.question,
+            partialQuery,
+          });
+      } catch (err) {
+        if (errorOnInvalidQuestions) {
+          this.history = historyBackup;
+          this.callLLM = callLLMBackup;
+
+          throw new Error(
+            `Could not process question ${question.question} - ${err}`,
+          );
+        } else {
+          console.error(
+            'Could not process question ',
+            question.question,
+            ' - ',
+            err,
+          );
+        }
+      }
+    }
+
+    this.history = historyBackup;
+    this.callLLM = callLLMBackup;
+
+    this.llmConfig.fewShotLearning = fewShotLearningBatch;
   }
 }

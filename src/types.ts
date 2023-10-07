@@ -89,3 +89,11 @@ export type LLMCallFunc = (
   messages: LLMCompatibleMessage[],
   queryPrefix: string,
 ) => Promise<string | null>;
+
+export type FewShotGenerationConfig = {
+  callLLM: LLMCallFunc;
+  questions: {
+    question: string;
+    clearHistory?: boolean;
+  }[];
+};
