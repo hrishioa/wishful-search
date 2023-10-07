@@ -27,7 +27,7 @@ RULES:
 6. Number of segments for a direct flight is one.
 \"\"\"
 
-Provide an appropriate SQLite Query to return the keys tp answer the user's question. Only filter by the things the user asked for.` ,
+Provide an appropriate SQLite Query to return the keys to answer the user's question. Only filter by the things the user asked for.` ,
   user: (question: string, firstQuestion: boolean) => `${firstQuestion ? 'Scratch that - new filters. ': ''}${question}`,
   assistant: (query: string, queryPrefix: string) => `${queryPrefix} ${query}`,
 }

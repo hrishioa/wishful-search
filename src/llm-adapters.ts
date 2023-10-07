@@ -1,3 +1,4 @@
+import { callOllama } from './ollama';
 import {
   CommonLLMParameters,
   LLMCallFunc,
@@ -30,6 +31,76 @@ interface MinimalAnthropicModule {
       completion: string;
     }>;
   };
+}
+
+export function getMistralAdapter(params?: CommonLLMParameters) {
+  function generateMistralPrompt(messages: LLMCompatibleMessage[]) {
+    `<s>[INST] {{ user_msg_1 }} [/INST] {{ model_answer_1 }}</s> [INST] {{ user_msg_2 }} [/INST] {{ model_answer_2 }}</s>`;
+
+    const prompt = messages
+      .map((message, index) =>
+        message.role === 'assistant'
+          ? `${message.content}${index < messages.length - 1 ? `</s>` : ''}`
+          : `<s>[INST] ${
+              message.role === 'system'
+                ? `<system>${message.content}</system>`
+                : message.content
+            } [/INST]`,
+      )
+      .join(' ');
+
+    return prompt;
+  }
+
+  const DEFAULT_MISTRAL_PARAMS = {
+    model: 'mistral',
+    temperature: 0,
+  };
+
+  const DEFAULT_MISTRAL_LLM_CONFIG: LLMConfig = {
+    enableTodaysDate: true,
+    fewShotLearning: [],
+  };
+
+  const adapter: {
+    llmConfig: LLMConfig;
+    callLLM: LLMCallFunc;
+  } = {
+    llmConfig: DEFAULT_MISTRAL_LLM_CONFIG,
+    callLLM: async function callLLM(
+      messages: LLMCompatibleMessage[],
+      queryPrefix: string,
+    ) {
+      if (messages[messages.length - 1]!.role !== 'assistant')
+        messages.push({
+          role: 'assistant',
+          content: queryPrefix,
+        });
+
+      const prompt = generateMistralPrompt(messages);
+
+      console.log('Prompt - ', prompt);
+
+      const response = await callOllama(
+        prompt,
+        params?.model ?? DEFAULT_MISTRAL_PARAMS.model,
+        11434,
+        params?.temperature ?? DEFAULT_MISTRAL_PARAMS.temperature,
+      );
+
+      for await (const token of response) {
+        console.log('Received ', token);
+
+        if (token.type === 'completeMessage') {
+          return token.message;
+        }
+      }
+
+      return null;
+    },
+  };
+
+  return adapter;
 }
 
 function getClaudeAdapter(
@@ -106,7 +177,7 @@ function getOpenAIAdapter(
     llmConfig: DEFAULT_OPENAI_LLM_CONFIG,
     callLLM: async function callLLM(
       messages: LLMCompatibleMessage[],
-      queryPrefix: string,
+      _: string,
     ) {
       if (messages.length < 1 || !messages[messages.length - 1]) return null;
 
@@ -144,6 +215,7 @@ function getOpenAIAdapter(
 const adapters = {
   getOpenAIAdapter,
   getClaudeAdapter,
+  getMistralAdapter,
 };
 
 export default adapters;
