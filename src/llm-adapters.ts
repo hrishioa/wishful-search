@@ -92,7 +92,7 @@ export function getMistralAdapter(params?: CommonLLMParameters) {
         console.log('Received ', token);
 
         if (token.type === 'completeMessage') {
-          return token.message;
+          return token.message.split('</s>')[0] || null;
         }
       }
 

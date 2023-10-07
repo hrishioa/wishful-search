@@ -15,7 +15,7 @@ FLIGHT_DATABASE_DDL:
 ${ddl}
 \`\`\`
 
-${dateStr ? `Today's: ${dateStr}.` : ''}
+${dateStr ? `Today's date: ${dateStr}.` : ''}
 
 RULES:
 \"\"\"
