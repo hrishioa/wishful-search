@@ -4,7 +4,6 @@ import { generateSQLDDL, validateStructuredDDL } from './structured-ddl';
 import {
   DBColumn,
   DDLTable,
-  FewShotGenerationConfig,
   LLMCallFunc,
   LLMCompatibleMessage,
   LLMConfig,
@@ -292,7 +291,7 @@ export class WishfulSearchEngine<ElementType> {
 
     const fullQuery = this.queryPrefix + ' ' + partialQuery;
 
-    console.log('Full query is ', fullQuery);
+    // console.log('Full query is ', fullQuery);
 
     const results = this.db.rawQuery(fullQuery);
 
@@ -342,11 +341,26 @@ export class WishfulSearchEngine<ElementType> {
 
     const partialQuery = await this.getQueryFromLLM(messages);
 
+    console.log('Prefix: ', this.queryPrefix, ', Partial: ', partialQuery);
+
     return this.searchWithPartialQuery(partialQuery);
   }
 
+  /**
+   * Generate few-shot examples using a smarter model,
+   * that can be auto-emdedded in the prompt.
+   * @param smarterCallLLMFunc adapter call function from a smarter model.
+   * @param fewShotQuestions some questions to generate responses for. For longer contexts, clear the history at some point to teach the model how to start a new search.
+   * @param noQuestionsWithZeroResults remove any questions whose queries yielded no results. A useful check, but sometimes it's what you're going for.
+   * @param errorOnInvalidQuestions Stop everything and throw an error if one of the questions fails, otherwise just don't include it in the final example set.
+   * @param verbose Print more.
+   */
   async autoGenerateFewShot(
-    fewShotConfig: FewShotGenerationConfig,
+    smarterCallLLMFunc: LLMCallFunc,
+    fewShotQuestions: {
+      question: string;
+      clearHistory?: boolean;
+    }[],
     noQuestionsWithZeroResults: boolean = false,
     errorOnInvalidQuestions: boolean = false,
     verbose: boolean = false,
@@ -359,13 +373,18 @@ export class WishfulSearchEngine<ElementType> {
     const historyBackup = this.history;
     const callLLMBackup = this.callLLM;
     this.history = [];
-    this.callLLM = fewShotConfig.callLLM;
+    this.callLLM = smarterCallLLMFunc;
 
     let fewShotLearningBatch: QQTurn[] = [];
 
-    for (const question of fewShotConfig.questions) {
+    console.log(
+      `############# Generating few-shot learning ########################`,
+      // JSON.stringify(fewShotConfig, null, 2),
+    );
+
+    for (const question of fewShotQuestions) {
       try {
-        if (verbose) console.log('Asking ', question.question);
+        if (verbose) console.log('Question: ', question.question);
 
         if (question.clearHistory) this.history = [];
 
@@ -375,10 +394,9 @@ export class WishfulSearchEngine<ElementType> {
 
         const results = this.searchWithPartialQuery(partialQuery);
 
-        if (verbose)
-          console.log(
-            `Got ${results.length} results with partial query ${partialQuery}.`,
-          );
+        console.log(`Full Query: ${this.queryPrefix} ${partialQuery}`);
+
+        if (verbose) console.log(`Got ${results.length} results.`);
 
         if (!noQuestionsWithZeroResults || results.length)
           fewShotLearningBatch.push({
@@ -406,7 +424,7 @@ export class WishfulSearchEngine<ElementType> {
 
     if (verbose)
       console.log(
-        'Generated examples - ',
+        '############## Generated examples:',
         JSON.stringify(fewShotLearningBatch, null, 2),
       );
 

@@ -73,17 +73,15 @@ export function getMistralAdapter(params?: CommonLLMParameters) {
     llmConfig: DEFAULT_MISTRAL_LLM_CONFIG,
     callLLM: async function callLLM(
       messages: LLMCompatibleMessage[],
-      queryPrefix: string,
+      queryPrefix?: string,
     ) {
-      if (messages[messages.length - 1]!.role !== 'assistant')
+      if (queryPrefix && messages[messages.length - 1]!.role !== 'assistant')
         messages.push({
           role: 'assistant',
           content: queryPrefix,
         });
 
       const prompt = generateMistralPrompt(messages);
-
-      console.log('Prompt - ', prompt);
 
       const response = await callOllama(
         prompt,
@@ -92,12 +90,8 @@ export function getMistralAdapter(params?: CommonLLMParameters) {
         params?.temperature ?? DEFAULT_MISTRAL_PARAMS.temperature,
       );
 
-      console.log('Output:\n\n');
       for await (const token of response) {
-        if (token.type === 'token') process.stdout.write(token.token);
-
         if (token.type === 'completeMessage') {
-          console.log('\n\n');
           return token.message.split('</s>')[0] || null;
         }
       }
@@ -132,7 +126,7 @@ function getClaudeAdapter(
     llmConfig: DEFAULT_CLAUDE_LLM_CONFIG,
     callLLM: async function callLLM(
       messages: LLMCompatibleMessage[],
-      queryPrefix: string,
+      queryPrefix?: string,
     ) {
       let prompt = messages
         .map((message) =>
@@ -145,9 +139,11 @@ function getClaudeAdapter(
         .join('');
 
       if (messages[messages.length - 1]!.role !== 'assistant')
-        prompt += `${assistantPromptTag} ${queryPrefix}`;
+        prompt += `${assistantPromptTag}${
+          queryPrefix ? ` ${queryPrefix}` : ''
+        }`;
 
-      console.log('Prompt - ', prompt);
+      // console.log('Prompt - ', prompt);
 
       const completion = await anthropic.completions.create({
         prompt,
@@ -183,12 +179,12 @@ function getOpenAIAdapter(
     llmConfig: DEFAULT_OPENAI_LLM_CONFIG,
     callLLM: async function callLLM(
       messages: LLMCompatibleMessage[],
-      _: string,
+      _?: string,
     ) {
       if (messages.length < 1 || !messages[messages.length - 1]) return null;
 
       if (messages[messages.length - 1]!.role === 'assistant') {
-        console.log('Last message is from assistant, rewriting...');
+        // console.log('Last message is from assistant, rewriting...');
 
         const lastAssistantMessage = messages[messages.length - 1]!.content;
         messages = [...messages.slice(0, messages.length - 1)];
@@ -196,7 +192,7 @@ function getOpenAIAdapter(
           messages[messages.length - 1]!.content
         }\n\n${lastAssistantMessage}`;
 
-        console.log('Messages is now ', messages);
+        // console.log('Messages is now ', messages);
       }
 
       const completion = await openai.chat.completions.create({

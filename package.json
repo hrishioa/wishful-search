@@ -18,9 +18,12 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.6.2",
+    "@types/hjson": "^2.4.4",
     "@types/node": "^20.5.7",
     "@types/sql.js": "^1.4.4",
     "@types/terminal-kit": "^2.5.1",
+    "csv-parse": "^5.5.1",
+    "hjson": "^3.2.2",
     "openai": "^4.8.0",
     "rimraf": "^5.0.5",
     "terminal-kit": "^3.0.0",

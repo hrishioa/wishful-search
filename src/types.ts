@@ -29,7 +29,7 @@ export type DDLColumnBase = {
   name: string; // Name of the column
   columnSpec: string; // SQlite type of the column
   staticExamples?: string[]; // Statically provided examples of potential values in the column
-  description: string; // Description of the column
+  description: string; // Description of the column, preferred empty to save tokens
   foreignKey?: {
     // Is this a foreign key? which table and column does it connect to? Only one-to-many are allowed.
     table: string;
@@ -87,13 +87,5 @@ export type LLMConfig = {
 
 export type LLMCallFunc = (
   messages: LLMCompatibleMessage[],
-  queryPrefix: string,
+  queryPrefix?: string,
 ) => Promise<string | null>;
-
-export type FewShotGenerationConfig = {
-  callLLM: LLMCallFunc;
-  questions: {
-    question: string;
-    clearHistory?: boolean;
-  }[];
-};

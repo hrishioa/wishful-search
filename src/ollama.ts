@@ -61,31 +61,39 @@ export async function* callOllama(
             openingBraceIndex,
             closingBraceIndex + 1,
           );
-          const parsedObject = JSON.parse(jsonString);
+          try {
+            const parsedObject = JSON.parse(jsonString);
 
-          if (!parsedObject.model)
-            throw new Error(
-              'Unrecognized response from ollama - missing model field',
+            if (!parsedObject.model)
+              throw new Error(
+                'Unrecognized response from ollama - missing model field',
+              );
+
+            if (parsedObject.response) {
+              yield {
+                type: 'token',
+                token: parsedObject.response,
+              };
+              completeMessage += parsedObject.response;
+            }
+
+            if (parsedObject.done || completeMessage.indexOf('</s>') !== -1) {
+              yield {
+                type: 'completeMessage',
+                message: completeMessage,
+              };
+              return;
+            }
+
+            // Remove the parsed object from the buffer
+            textBuffer = textBuffer.slice(closingBraceIndex + 1);
+          } catch (err) {
+            console.error(
+              'Error parsing Ollama response object - ',
+              jsonString,
             );
-
-          if (parsedObject.response) {
-            yield {
-              type: 'token',
-              token: parsedObject.response,
-            };
-            completeMessage += parsedObject.response;
+            throw err;
           }
-
-          if (parsedObject.done || completeMessage.indexOf('</s>') !== -1) {
-            yield {
-              type: 'completeMessage',
-              message: completeMessage,
-            };
-            return;
-          }
-
-          // Remove the parsed object from the buffer
-          textBuffer = textBuffer.slice(closingBraceIndex + 1);
         } else {
           // No complete JSON objects in buffer
           break;

@@ -198,7 +198,7 @@ export class LLMSearcheableDatabase<RowObject> {
         const columnCount = this.getColumnCount(currentTable!);
 
         const stmt = this.db.prepare(
-          `INSERT INTO ${currentTable} VALUES (${Array(columnCount)
+          `INSERT OR IGNORE INTO ${currentTable} VALUES (${Array(columnCount)
             .fill('?')
             .join(',')})`,
         );

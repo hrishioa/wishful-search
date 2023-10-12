@@ -13,6 +13,10 @@ module.exports = {
   },
   resolve: {
     extensions: ['.ts', '.js'],
+    fallback: {
+      path: false,
+      fs: false,
+    },
   },
   output: {
     filename: 'wishful-search.js',
