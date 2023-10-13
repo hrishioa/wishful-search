@@ -20,7 +20,7 @@ module.exports = {
   },
   output: {
     filename: 'wishful-search.js',
-    path: path.resolve(__dirname, 'dist/browser'),
+    path: path.resolve(__dirname, 'release'),
     library: 'WishfulSearch',
     libraryTarget: 'umd',
   },
