@@ -4,11 +4,7 @@ WishfulSearch is a natural language search module for JSON arrays. Take any JSON
 
 Apache-2 licensed - but recommended to fork and modify, and I'm happy to help if you run into issues.
 
-{% note %}
-
-This repo is the work of a single dev, and meant to be for educational purposes. Use at your own risk!
-
-{% endnote %}
+**This repo is the work of a single dev, and meant to be for educational purposes. Use at your own risk!**
 
 ## Key Features
 
