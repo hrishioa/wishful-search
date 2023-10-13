@@ -30,7 +30,7 @@ WishfulSearch is a natural language search module for JSON arrays. Take any JSON
 
 *This repo is the work of one overworked dev, and meant to be for educational purposes. Use at your own risk!*
 
-## Key Features
+# Key Features
 
 * **AI Quickstart - just bring an object**
   - Generate everything you need to use the library from a single, untyped JS object. Schema, functions, all of it.
@@ -62,7 +62,7 @@ WishfulSearch is a natural language search module for JSON arrays. Take any JSON
 - **Safer search**
   - While running auto-generated queries can never be properly safe. WishfulSearch implements a few filters to sanitize the output, as well only having the LLM generate partial queries to try and improve safety. Ideally this is used in cases where having the entire db exposed to the user is not a security risk.
 
-## Installation
+# Installation
 
 Server:
 
@@ -74,7 +74,7 @@ Client:
 
 [Just get the bundled wishfulsearch.js], or compile a smaller one yourself from source. More instructions coming if this ends up a common use-case.
 
-## Usage
+# Usage
 
 ### Selecting your model
 
@@ -108,7 +108,7 @@ const MistralLLMAdapter = LLMAdapters.getMistralAdapter({
 
 You can now use any of these for the Quickstart or Search functions.
 
-### AI Quickstart
+## AI Quickstart
 
 WishfulSearch needs three things from you:
 
@@ -218,7 +218,7 @@ const results = (await wishfulSearchEngine.search(
 )) as Movie[];
 ```
 
-## How it works
+# How it works
 
 A few things happen in order to perform a search:
 
@@ -238,7 +238,7 @@ A few things happen in order to perform a search:
 
 I tend to read repos prompt first. In this case, most of the complexity is in formatting the output and injecting things at the right time, but if you'd like to do the same, here are the prompts for [AI Quickstart] and for [Search].
 
-## TODO
+# TODO
 
 1. Tests: More robust tests are needed before production usage. Unfortunately that's outside my scope at the moment, but I'll update the repo if I get around to it! Help would be appreciated.
 2. Client-side testing: The client-side bundle has been tested in a limited fashion. It's hard to keep running all the toolchains without automated testing for now. If you run into any issues, let me know.
