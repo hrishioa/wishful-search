@@ -328,6 +328,12 @@ export class WishfulSearchEngine<ElementType> {
       partialQuery = partialQuery.substring(this.queryPrefix.length).trim();
     }
 
+    // if partialquery starts with SELECT...FROM we remove that and the word after that
+    const selectFromRegex = /^\s*?SELECT[\s\S]*?FROM[\s\S]+?\s/;
+    if (selectFromRegex.test(partialQuery)) {
+      partialQuery = partialQuery.replace(selectFromRegex, '').trim();
+    }
+
     return partialQuery;
   }
 
@@ -365,7 +371,7 @@ export class WishfulSearchEngine<ElementType> {
     noQuestionsWithZeroResults: boolean = false,
     errorOnInvalidQuestions: boolean = false,
     verbose: boolean = false,
-  ) {
+  ): Promise<QQTurn[]> {
     if (this.latestIncompleteQuestion)
       throw new Error(
         'It seems there is a search in progress, or partially completed. FewShot generation is best done at the very beginning, after seeding your data.',
@@ -393,9 +399,9 @@ export class WishfulSearchEngine<ElementType> {
           this.generateSearchMessages(question.question),
         );
 
-        const results = this.searchWithPartialQuery(partialQuery);
-
         console.log(`Full Query: ${this.queryPrefix} ${partialQuery}`);
+
+        const results = this.searchWithPartialQuery(partialQuery);
 
         if (verbose) console.log(`Got ${results.length} results.`);
 
@@ -433,5 +439,7 @@ export class WishfulSearchEngine<ElementType> {
     this.callLLM = callLLMBackup;
 
     this.llmConfig.fewShotLearning = fewShotLearningBatch;
+
+    return fewShotLearningBatch;
   }
 }

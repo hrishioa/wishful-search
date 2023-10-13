@@ -19,13 +19,12 @@ ${dateStr ? `Today's date: ${dateStr}.` : ''}
 
 RULES:
 \"\"\"
-1. Do not use DISTINCT, ARRAY_LENGTH, MAX, MIN or AVG.
+1. Do not use LIMIT, DISTINCT, ARRAY_LENGTH, MAX, MIN or AVG.
 2. Prefer \`strftime\` to format dates better.
 3. **Deliberately go through the question and database schema word by word** to appropriately answer the question
-4. **Use Table Aliases** to prevent ambiguity. For example, \`SELECT table1.col1, table2.col1 FROM table1 JOIN table2 ON table1.id = table2.id\`.
-5. Prefer sorting the right values to the top instead of filters if possible.
-6. Number of segments for a direct flight is one.
-7. Try to continue the partial query.
+4. Prefer sorting the right values to the top instead of filters if possible.
+5. Number of segments for a direct flight is one.
+6. Try to continue the partial query.
 \"\"\"
 
 Provide an appropriate SQLite Query to return the keys to answer the user's question. Only filter by the things the user asked for, and only return ids or keys.` ,
@@ -93,23 +92,3 @@ export function generateLLMMessages(
 
   return messages;
 }
-
-// ############################ STARTING POINT
-
-// // prettier-ignore
-// const startingPointPrompts = {
-//   typeGenerationS: (exampleObject: any, elementName: string) =>
-// `EXAMPLE:
-// \`\`\`typescript
-// export const EXAMPLE_${elementName.toUpperCase()}: ${elementName} = ${JSON.stringify(exampleObject, null, 2)}`,
-//   typeGenerationU: () =>
-// `Outline a typespec in typescript for the example object provided.`,
-//   tableCotGeneration: () =>
-// `GUIDELINES:
-// 1. Prefer flat tables when necessary, instead of making additional tables.
-// 2. Encode datatypes in the column names when possible.
-
-// Talk me through how you would structure one of more Sqlite tables to hold this information following GUIDELINES, inferring things like datatypes, what information is being managed, what decisions you would make, step-by-step. Then outline the overall structure of the tables and which columns would need comments in the final DDL to clear any confusion. Be exhaustive, and explain your decisions. Skip primary keys when they're not really needed.`,
-//   tableGeneration: () =>
-// `Please generate a structured DDL that can be `
-// }
