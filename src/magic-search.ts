@@ -25,9 +25,10 @@ RULES:
 4. **Use Table Aliases** to prevent ambiguity. For example, \`SELECT table1.col1, table2.col1 FROM table1 JOIN table2 ON table1.id = table2.id\`.
 5. Prefer sorting the right values to the top instead of filters if possible.
 6. Number of segments for a direct flight is one.
+7. Try to continue the partial query.
 \"\"\"
 
-Provide an appropriate SQLite Query to return the keys to answer the user's question. Only filter by the things the user asked for.` ,
+Provide an appropriate SQLite Query to return the keys to answer the user's question. Only filter by the things the user asked for, and only return ids or keys.` ,
   user: (question: string, firstQuestion: boolean) => `${firstQuestion ? 'Ignore all previous filters. ': ''}${question}`,
   assistant: (query: string, queryPrefix: string) => `${queryPrefix} ${query}`,
 }

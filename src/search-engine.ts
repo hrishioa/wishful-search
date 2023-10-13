@@ -291,8 +291,6 @@ export class WishfulSearchEngine<ElementType> {
 
     const fullQuery = this.queryPrefix + ' ' + partialQuery;
 
-    // console.log('Full query is ', fullQuery);
-
     const results = this.db.rawQuery(fullQuery);
 
     if (!this.getKeyFromObject || !this.elementDict) return results;
@@ -319,6 +317,13 @@ export class WishfulSearchEngine<ElementType> {
     if (!partialQuery)
       throw new Error('Could not generate query from question with LLM');
 
+    const extractedSQL = partialQuery.match(/```sql([\s\S]*?)```/g);
+    if (extractedSQL?.length)
+      partialQuery = extractedSQL[0]
+        .replace(/```sql/g, '')
+        .replace(/```/g, '')
+        .trim();
+
     if (partialQuery.toLowerCase().startsWith(this.queryPrefix.toLowerCase())) {
       partialQuery = partialQuery.substring(this.queryPrefix.length).trim();
     }
@@ -337,11 +342,7 @@ export class WishfulSearchEngine<ElementType> {
   async search(question: string): Promise<string[] | ElementType[]> {
     const messages = this.generateSearchMessages(question);
 
-    console.log('Calling with messages ', JSON.stringify(messages, null, 2));
-
     const partialQuery = await this.getQueryFromLLM(messages);
-
-    console.log('Prefix: ', this.queryPrefix, ', Partial: ', partialQuery);
 
     return this.searchWithPartialQuery(partialQuery);
   }
@@ -377,10 +378,10 @@ export class WishfulSearchEngine<ElementType> {
 
     let fewShotLearningBatch: QQTurn[] = [];
 
-    console.log(
-      `############# Generating few-shot learning ########################`,
-      // JSON.stringify(fewShotConfig, null, 2),
-    );
+    if (verbose)
+      console.log(
+        `############# Generating few-shot learning ########################`,
+      );
 
     for (const question of fewShotQuestions) {
       try {
