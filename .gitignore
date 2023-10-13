@@ -8,6 +8,8 @@ lib-cov
 *.gz
 *.swp
 
+.vscode
+
 pids
 logs
 results
