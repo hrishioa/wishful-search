@@ -280,7 +280,7 @@ export class WishfulSearchEngine<ElementType> {
    * @returns list of elements if getKeyFromObject is provided, else
    * returns a list of keys.
    */
-  searchWithPartialQuery(partialQuery: string): string[] | ElementType[] {
+  searchWithPartialQuery(partialQuery: string, printQuery?: boolean): string[] | ElementType[] {
     if (this.saveHistory && this.latestIncompleteQuestion)
       this.history.push({
         question: this.latestIncompleteQuestion,
@@ -290,6 +290,9 @@ export class WishfulSearchEngine<ElementType> {
     this.latestIncompleteQuestion = null;
 
     const fullQuery = this.queryPrefix + ' ' + partialQuery;
+
+    if(printQuery)
+    console.log('Query: ', fullQuery);
 
     const results = this.db.rawQuery(fullQuery);
 
@@ -342,15 +345,16 @@ export class WishfulSearchEngine<ElementType> {
    * the LLM, and returns either a list of keys or elements depending
    * on instantiating config.
    * @param question Search question from the user.
+   * @param printQuery Print the full query to the console.
    * @returns If getKeyFromObject is set, this returns a list of elements.
    * If not, returns a list of keys you can use yourself.
    */
-  async search(question: string): Promise<string[] | ElementType[]> {
+  async search(question: string, printQuery?: boolean): Promise<string[] | ElementType[]> {
     const messages = this.generateSearchMessages(question);
 
     const partialQuery = await this.getQueryFromLLM(messages);
 
-    return this.searchWithPartialQuery(partialQuery);
+    return this.searchWithPartialQuery(partialQuery, printQuery);
   }
 
   /**
@@ -377,7 +381,7 @@ export class WishfulSearchEngine<ElementType> {
         'It seems there is a search in progress, or partially completed. FewShot generation is best done at the very beginning, after seeding your data.',
       );
 
-    const historyBackup = this.history;
+    const historyBackup = [...this.history];
     const callLLMBackup = this.callLLM;
     this.history = [];
     this.callLLM = smarterCallLLMFunc;
@@ -391,6 +395,8 @@ export class WishfulSearchEngine<ElementType> {
 
     for (const question of fewShotQuestions) {
       try {
+        const tempHistoryBackup = [...this.history];
+
         if (verbose) console.log('Question: ', question.question);
 
         if (question.clearHistory) this.history = [];
@@ -399,17 +405,24 @@ export class WishfulSearchEngine<ElementType> {
           this.generateSearchMessages(question.question),
         );
 
-        console.log(`Full Query: ${this.queryPrefix} ${partialQuery}`);
+        if(verbose)
+          console.log(`Full Query: ${this.queryPrefix} ${partialQuery}`);
 
         const results = this.searchWithPartialQuery(partialQuery);
 
         if (verbose) console.log(`Got ${results.length} results.`);
 
-        if (!noQuestionsWithZeroResults || results.length)
+        if (!noQuestionsWithZeroResults || results.length) {
           fewShotLearningBatch.push({
             question: question.question,
             partialQuery,
           });
+        } else {
+          if (verbose) console.log('Skipping question with 0 results.');
+          this.history = tempHistoryBackup;
+        }
+
+
       } catch (err) {
         if (errorOnInvalidQuestions) {
           this.history = historyBackup;

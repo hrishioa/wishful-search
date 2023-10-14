@@ -143,8 +143,6 @@ function getClaudeAdapter(
           queryPrefix ? ` ${queryPrefix}` : ''
         }`;
 
-      // console.log('Prompt - ', prompt);
-
       const completion = await anthropic.completions.create({
         prompt,
         max_tokens_to_sample: 10000,
@@ -184,15 +182,11 @@ function getOpenAIAdapter(
       if (messages.length < 1 || !messages[messages.length - 1]) return null;
 
       if (messages[messages.length - 1]!.role === 'assistant') {
-        // console.log('Last message is from assistant, rewriting...');
-
         const lastAssistantMessage = messages[messages.length - 1]!.content;
         messages = [...messages.slice(0, messages.length - 1)];
         messages[messages.length - 1]!.content = `${
           messages[messages.length - 1]!.content
         }\n\n${lastAssistantMessage}`;
-
-        // console.log('Messages is now ', messages);
       }
 
       const completion = await openai.chat.completions.create({
