@@ -19,6 +19,7 @@
   <a href="#key-features">Key Features</a> •
   <a href="#installation">Installation</a> •
   <a href="#usage">Usage</a> •
+  <a href="#example-movies">Demo: Search Movies</a> •
   <a href="#how-it-works">How it works</a>
 </p>
 
@@ -216,6 +217,17 @@ const results = (await wishfulSearchEngine.search(
 )) as Movie[];
 ```
 
+# Example: Movies
+
+The demo shows filters in the [Kaggle movies](https://www.kaggle.com/datasets/rounakbanik/the-movies-dataset/) dataset.
+
+To use:
+1. Download `movies_metadata.csv`.
+2. Place it in `tests/data`.
+3. Run `tests/movies.run.ts` with `npx ts-node tests/movies.run.ts`.
+
+You can uncomment the different adapters for GPT, Claude, Mistral. Comment and uncomment the few-shot generation to see how behavior changes. Have fun!
+
 # How it works
 
 A few things happen in order to perform a search:
@@ -240,7 +252,3 @@ I tend to read repos prompt first. In this case, most of the complexity is in fo
 
 1. Tests: More robust tests are needed before production usage. Unfortunately that's outside my scope at the moment, but I'll update the repo if I get around to it! Help would be appreciated.
 2. Client-side testing: The client-side bundle has been tested in a limited fashion. It's hard to keep running all the toolchains without automated testing for now. If you run into any issues, let me know.
-
-## Examples
-
-The provided example uses the [Kaggle Movies] dataset. It's too big to include here, but you can download `movies_metadata.csv` and use the test file to start the search!
