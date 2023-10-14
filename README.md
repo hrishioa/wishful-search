@@ -44,10 +44,10 @@ WishfulSearch is a natural language search module for JSON arrays. Take any JSON
   - Use a smarter model to generate few-shot examples from a few questions, retemplate and insert into a prompt of a local model for instantly better results.
 
 * **Multi-model**
-  - GPT, Claude, Mistral adapters (OpenAI, Anthropic and [Ollama]) are provided, with specific-model template generation from the same input with advanced things like model-resume. Feel free to swap models midway through a conversation!
+  - GPT, Claude, Mistral adapters (OpenAI, Anthropic and [Ollama](https://ollama.ai/)) are provided, with specific-model template generation from the same input with advanced things like model-resume. Feel free to swap models midway through a conversation!
 
 - **Single production dependency**
-  - The only prod dependency is [sql.js], so you're not dragging along [Guy Fieri](https://nodesource.com/blog/is-guy-fieri-in-your-node-js-packages/) if you don't want to.
+  - The only prod dependency is [sql.js](https://github.com/sql-js/sql.js), so you're not dragging along [Guy Fieri](https://nodesource.com/blog/is-guy-fieri-in-your-node-js-packages/) if you don't want to.
 
 - **Exposed prompts - do your own thing**
   - Use the entire functionality, or don't. Most key functions are exposed, including those for prompt generation. Use as you wish.
@@ -71,13 +71,13 @@ npm i wishful-search
 
 Client:
 
-[Just get the bundled wishfulsearch.js](https://cdn.jsdelivr.net/npm/wishful-search@0.0.3/release/wishful-search.min.js), or compile a smaller one yourself from source. More instructions coming if this ends up a common use-case.
+Just get the [bundled wishfulsearch.js](https://cdn.jsdelivr.net/npm/wishful-search@0.0.3/release/wishful-search.min.js), or compile a smaller one yourself from source. More instructions coming if this ends up a common use-case.
 
 # Usage
 
 ### Selecting your model
 
-You'll need an [openai] or [anthropic] instance (unless you're using [Ollama] and Mistral, in which case you just need to pull in an adapter).
+You'll need an OpenAI or Anthropic instance (unless you're using Ollama and [Mistral](https://mistral.ai/news/announcing-mistral-7b/), in which case you just need to pull in an adapter).
 
 ```typescript
 import OpenAI from 'openai';
@@ -246,7 +246,7 @@ A few things happen in order to perform a search:
 
 ## Where are the prompts?
 
-I tend to read repos prompt first. In this case, most of the complexity is in formatting the output and injecting things at the right time, but if you'd like to do the same, here are the prompts for [AI Quickstart] and for [Search].
+I tend to read repos prompt first. In this case, most of the complexity is in formatting the output and injecting things at the right time, but if you'd like to do the same, here are the prompts for [AI Quickstart](/src/auto-analyze.ts) and for [Search](/src/magic-search.ts).
 
 # TODO
 
