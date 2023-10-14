@@ -1,8 +1,8 @@
 {
   "author": "Hrishi Olickel <hrishi[at]grey-wing.com>",
   "name": "wishful-search",
-  "version": "0.0.2",
-  "license": "MIT",
+  "version": "0.0.3",
+  "license": "Apache-2.0",
   "main": "dist/node/index.js",
   "module": "dist/node/index.js",
   "types": "dist/node/index.d.ts",

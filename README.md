@@ -1,17 +1,15 @@
-
 <h1 align="center">
   <br>
   <a href="https://github.com/hrishioa/wishful-search"><img src="https://github.com/hrishioa/wishful-search/assets/973967/ebd2d4cc-12d5-4916-b7c2-26cd234905d6" alt="WishfulSearch" width="100"></a>
   <br>
   WishfulSearch
   <br>
-
 </h1>
 
 <h3 align="center">Multi-model natural language search for any JSON.</h3>
 
 <div align="center">
-  
+
   [![Twitter Follow](https://img.shields.io/twitter/follow/hrishi?style=social)](https://twitter.com/hrishioa) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -39,7 +37,7 @@ WishfulSearch is a natural language search module for JSON arrays. Take any JSON
   - WishfulSearch comes included with a performant sqlite database bundled for use, managed by the module.
 
 * **Server and client-side**
-  - Includes [bundled file] to import as a script, or install from npm.
+  - Includes [bundled file from CDN](https://cdn.jsdelivr.net/npm/wishful-search@0.0.3/release/wishful-search.min.js) to import as a script, or install from npm.
 
 * **Automated few-shot generation**
   - Use a smarter model to generate few-shot examples from a few questions, retemplate and insert into a prompt of a local model for instantly better results.
@@ -72,7 +70,7 @@ npm i wishful-search
 
 Client:
 
-[Just get the bundled wishfulsearch.js], or compile a smaller one yourself from source. More instructions coming if this ends up a common use-case.
+[Just get the bundled wishfulsearch.js](https://cdn.jsdelivr.net/npm/wishful-search@0.0.3/release/wishful-search.min.js), or compile a smaller one yourself from source. More instructions coming if this ends up a common use-case.
 
 # Usage
 
