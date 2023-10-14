@@ -16,9 +16,9 @@ const openai = new OpenAI();
     model: 'gpt-4',
   });
 
-  const GPT3LLMAdapter = LLMAdapters.getOpenAIAdapter(openai, {
-    model: 'gpt-3.5-turbo',
-  });
+  // const GPT3LLMAdapter = LLMAdapters.getOpenAIAdapter(openai, {
+  //   model: 'gpt-3.5-turbo',
+  // });
 
   // Uncomment to use either Claude model
   // const Claude2LLMAdapter = LLMAdapters.getClaudeAdapter(Anthropic.HUMAN_PROMPT, Anthropic.AI_PROMPT, anthropic, {
@@ -45,7 +45,7 @@ const openai = new OpenAI();
       enableTodaysDate: true,
       fewShotLearning: [],
     },
-    GPT3LLMAdapter.callLLM,
+    GPT4LLMAdapter.callLLM,
     (movie: Movie) => movie.id,
     true,
     true,
@@ -59,20 +59,20 @@ const openai = new OpenAI();
 
   // Uncomment for auto-fewshot generation. You can try using GPT4 to train 3,
   // Claude-2 to train 3.5, 4 to train mistral, or whatever you'd like.
-  await wishfulSearchEngine.autoGenerateFewShot(GPT4LLMAdapter.callLLM, [{
-    question: 'something romantic?'
-  },{
-    question: 'Same filters, instead now Comedy.'
-  }, {
-    question: 'Whats the most popular one?',
-  }, {
-    question: 'Is it from Warner Brothers? If not why show me it?'
-  }, {
-    question: 'Something that has women or woman in the title.'
-  }, {
-    question: 'What movie had the highest revenue in 2010?',
-    clearHistory: true
-  }], true, false, false);
+  // await wishfulSearchEngine.autoGenerateFewShot(GPT4LLMAdapter.callLLM, [{
+  //   question: 'something romantic?'
+  // },{
+  //   question: 'Same filters, instead now Comedy.'
+  // }, {
+  //   question: 'Whats the most popular one?',
+  // }, {
+  //   question: 'Is it from Warner Brothers? If not why show me it?'
+  // }, {
+  //   question: 'Something that has women or woman in the title.'
+  // }, {
+  //   question: 'What movie had the highest revenue in 2010?',
+  //   clearHistory: true
+  // }], true, false, false);
 
   while(true) {
     const q = await question('\n\nWhat are you looking for? ');
