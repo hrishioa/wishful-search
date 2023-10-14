@@ -23,7 +23,7 @@
   <a href="#how-it-works">How it works</a>
 </p>
 
-![screenshot](https://raw.githubusercontent.com/amitmerchant1990/electron-markdownify/master/app/img/markdownify.gif)
+![screenshot](https://raw.githubusercontent.com/hrishioa/wishful-search/master/assets/recording1.svg)
 
 WishfulSearch is a natural language search module for JSON arrays. Take any JSON array you have (notifications, movies, flights, people) and filter it with complex questions. WishfulSearch takes care of the prompting, database management, object-to-relational conversion and query formatting.
 
