@@ -137,7 +137,7 @@ GPT-4 and Claude-2 perform similarly and are recommended.
 
 `results` will contain the same info as an `analysis_{date}.md` file placed in the directory of your choice. The file should contain instructions, along with the structured DDL and the ObjectToRelational function. Make sure to read the code - if your objects are complex it might need some tweaking - before you use it!
 
-Smart models can get your 99% of the way there in most cases, but some common things to look out for:
+Smart models can get you 99% of the way there in most cases, but some common things to look out for:
 
 1. No dynamic enum settings in the structured DDL - you may not need these, but GPT-4 finds it hard to recommend any.
 2. No default values in case your objects are sometimes missing fields. We generate the entire thing from a single object, so the model simply doesn't know which fields are missing or optional. Providing your own typespec as a parameter should fix this.
