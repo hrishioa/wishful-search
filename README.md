@@ -23,7 +23,11 @@
   <a href="#how-it-works">How it works</a>
 </p>
 
-![screenshot](https://raw.githubusercontent.com/hrishioa/wishful-search/master/assets/recording1.svg)
+<div align="center">
+  
+![output2](https://github.com/hrishioa/wishful-search/assets/973967/34e2fa82-2ae2-442a-972d-a2ab97d51d5e)
+
+</div>
 
 WishfulSearch is a natural language search module for JSON arrays. Take any JSON array you have (notifications, movies, flights, people) and filter it with complex questions. WishfulSearch takes care of the prompting, database management, object-to-relational conversion and query formatting.
 
