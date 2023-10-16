@@ -23,33 +23,117 @@
   <a href="#how-it-works">How it works</a>
 </p>
 
-![screenshot](https://raw.githubusercontent.com/hrishioa/wishful-search/master/assets/recording1.svg)
+// include screenshot here
 
-WishfulSearch is a natural language search module for JSON arrays. Take any JSON array you have (notifications, movies, flights, people) and filter it with complex questions. WishfulSearch takes care of the prompting, database management, object-to-relational conversion and query formatting.
+WishfulSearch allows you to search JSON arrays simply with natural language.
 
-*This repo is the work of one overworked dev, and meant to be for educational purposes. Use at your own risk!*
+Take any JSON array you have (notifications, movies, flights, people) and filter it with complex questions. WishfulSearch takes care of the prompting, database management, object-to-relational conversion and query formatting.
+
+_This repo is the work of one overworked dev, and meant to be for educational purposes. Use at your own risk!_
+
+# Usage
+
+### 1. Create an LLM adapter
+
+An LLM adapter is WishfulSearch's abstraction over an LLM API. You can set up WishfulSearch to work with a variety of model providers (OpenAI, Anthropic, Mistral etc.).
+
+OpenAI:
+
+```typescript
+import OpenAI from 'openai';
+const openai = new OpenAI();
+
+const adapter = LLMAdapters.getOpenAIAdapter(openai, {
+  model: 'gpt-4',
+});
+```
+
+Anthropic:
+
+``` typescript
+import Anthropic from '@anthropic-ai/sdk';
+const anthropic = new Anthropic();
+
+const adapter = LLMAdapters.getClaudeAdapter(
+  Anthropic.HUMAN_PROMPT,
+  Anthropic.AI_PROMPT,
+  anthropic,
+  {
+    model: 'claude-2',
+  },
+);
+```
+
+Mistral (via [Ollama](https://ollama.ai) installed and running on your machine locally):
+
+```typescript
+const adapter = LLMAdapters.getMistralAdapter({
+  model: 'mistral',
+  temperature: 0.1,
+});
+```
+
+### 2. Define a search engine 
+
+Describe how the library should handle your data by creating a `WishfulSearchEngine`.
+
+```typescript
+const wishfulSearchEngine = await WishfulSearchEngine.create(
+    'flights', // Name for your search instance, for labelling
+    MOVIES_DDL, // Structured DDL
+    {
+      table: 'Movies', // Primary table
+      column: 'id', // Primary id column
+    },
+    movieToRows, // Object to relational function
+    {
+      enableTodaysDate: true, // Inform the model about the date
+      fewShotLearning: [], // Few-shot examples
+    },
+    GPT4LLMAdapter.callLLM, // LLM calling function
+    (movie: Movie) => movie.id, // Object to id function
+    true, // Save question history?
+    true, // Enable dynamic enums on insert?
+    true // Sort dynamic enums by frequency? Light performance penalty on insert but better searches and token savings
+  	undefined // sql.js wasm URL
+  );
+```
+
+### 3. Search
+
+Load your data and search.
+
+```typescript
+const errors = wishfulSearchEngine.insert(TEST_MOVIES);
+
+const results = (await wishfulSearchEngine.search(
+  'Something romantic but not very short from the 80s',
+)) as Movie[];
+```
 
 # Key Features
 
-* **AI Quickstart - just bring an object**
+- **AI Quickstart - just bring an object**
   - Generate everything you need to use the library from a single, untyped JS object. Schema, functions, all of it.
-
-* **Database Batteries Included**
+  
+- **Database Batteries Included**
   - WishfulSearch comes included with a performant sqlite database bundled for use, managed by the module.
+  
+- **Server and client-side**
 
-* **Server and client-side**
   - Includes [bundled file from CDN](https://cdn.jsdelivr.net/npm/wishful-search@0.0.3/release/wishful-search.min.js) to import as a script, or install from npm.
 
-* **Automated few-shot generation**
+- **Automated few-shot generation**
+
   - Use a smarter model to generate few-shot examples from a few questions, retemplate and insert into a prompt of a local model for instantly better results.
 
-* **Multi-model**
+- **Multi-model**
   - GPT, Claude, Mistral adapters (OpenAI, Anthropic and [Ollama](https://ollama.ai/)) are provided, with specific-model template generation from the same input with advanced things like model-resume. Feel free to swap models midway through a conversation!
 
-- **Single production dependency**
+* **Single production dependency**
   - The only prod dependency is [sql.js](https://github.com/sql-js/sql.js), so you're not dragging along [Guy Fieri](https://nodesource.com/blog/is-guy-fieri-in-your-node-js-packages/) if you don't want to.
-
-- **Exposed prompts - do your own thing**
+  
+* **Exposed prompts - do your own thing**
   - Use the entire functionality, or don't. Most key functions are exposed, including those for prompt generation. Use as you wish.
 
 ### Better Search
@@ -72,40 +156,6 @@ npm i wishful-search
 Client:
 
 Just get the [bundled wishfulsearch.js](https://cdn.jsdelivr.net/npm/wishful-search@0.0.3/release/wishful-search.min.js), or compile a smaller one yourself from source. More instructions coming if this ends up a common use-case.
-
-# Usage
-
-### Selecting your model
-
-You'll need an OpenAI or Anthropic instance (unless you're using Ollama and [Mistral](https://mistral.ai/news/announcing-mistral-7b/), in which case you just need to pull in an adapter).
-
-```typescript
-import OpenAI from 'openai';
-const openai = new OpenAI();
-
-import Anthropic from '@anthropic-ai/sdk';
-const anthropic = new Anthropic();
-
-const GPTLLMAdapter = LLMAdapters.getOpenAIAdapter(openai, {
-  model: 'gpt-4',
-});
-
-const ClaudeLLMAdapter = LLMAdapters.getClaudeAdapter(
-  Anthropic.HUMAN_PROMPT,
-  Anthropic.AI_PROMPT,
-  anthropic,
-  {
-    model: 'claude-2',
-  },
-);
-
-const MistralLLMAdapter = LLMAdapters.getMistralAdapter({
-  model: 'mistral',
-  temperature: 0.1,
-});
-```
-
-You can now use any of these for the Quickstart or Search functions.
 
 ## AI Quickstart
 
@@ -222,6 +272,7 @@ const results = (await wishfulSearchEngine.search(
 The demo shows filters in the [Kaggle movies](https://www.kaggle.com/datasets/rounakbanik/the-movies-dataset/) dataset.
 
 To use:
+
 1. Download `movies_metadata.csv`.
 2. Place it in `tests/data`.
 3. Run `tests/movies.run.ts` with `npx ts-node tests/movies.run.ts`.
@@ -250,5 +301,11 @@ I tend to read repos prompt first. In this case, most of the complexity is in fo
 
 # TODO
 
-1. Tests: More robust tests are needed before production usage. Unfortunately that's outside my scope at the moment, but I'll update the repo if I get around to it! Help would be appreciated.
-2. Client-side testing: The client-side bundle has been tested in a limited fashion. It's hard to keep running all the toolchains without automated testing for now. If you run into any issues, let me know.
+- [ ] Tests
+
+  More robust tests are needed before production usage. Unfortunately that's outside my scope at the moment, but I'll update the repo if I get around to it! Help would be appreciated.
+
+- [ ] Client-side testing
+
+  The client-side bundle has been tested in a limited fashion. It's hard to keep running all the toolchains without automated testing for now. If you run into any issues, let me know.
+
