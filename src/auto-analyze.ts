@@ -176,6 +176,10 @@ export async function autoAnalyzeObject(
   let tableStructure: string | null = null;
   let objectToRowFunc: string | null = null;
 
+  if(markdownSaveLocation && !fs.existsSync(markdownSaveLocation)) {
+    throw new Error(`Markdown save location ${markdownSaveLocation} does not exist!`);
+  }
+
   const messages: LLMCompatibleMessage[] = [
     {
       role: 'system',
