@@ -190,6 +190,8 @@ export async function autoAnalyzeObject(
   if (!typespec) {
     console.log('Generating typespec...');
 
+    typespec = await callLLM(messages);
+
     if (!typespec)
       throw new Error('No response from LLM while generating typespec!');
 
