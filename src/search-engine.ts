@@ -2,6 +2,8 @@ import { LLMSearcheableDatabase } from './db';
 import { generateLLMMessages } from './magic-search';
 import { generateSQLDDL, validateStructuredDDL } from './structured-ddl';
 import {
+  Analysis,
+  AnalysisTypespec,
   DBColumn,
   DDLTable,
   LLMCallFunc,
@@ -273,6 +275,10 @@ export class WishfulSearchEngine<ElementType> {
     );
   }
 
+  cantReturnFullObjects() {
+    return (!this.getKeyFromObject || !this.elementDict)
+  }
+
   /**
    * Searches the engine if you have a partial query from the LLM.
    * @param partialQuery A query (excluding the search prefix like
@@ -292,11 +298,11 @@ export class WishfulSearchEngine<ElementType> {
     const fullQuery = this.queryPrefix + ' ' + partialQuery;
 
     if(printQuery)
-    console.log('Query: ', fullQuery);
+    console.log('\nQuery: ', fullQuery);
 
     const results = this.db.rawQuery(fullQuery);
 
-    if (!this.getKeyFromObject || !this.elementDict) return results;
+    if(this.cantReturnFullObjects()) return results;
     else
       return results
         .map((key) => this.elementDict![key])
@@ -338,6 +344,90 @@ export class WishfulSearchEngine<ElementType> {
     }
 
     return partialQuery;
+  }
+
+  async autoSearch(question: string, toStringFunc: (element: ElementType) => string, optimizationRounds: number, printQueries?: boolean): Promise<ElementType[]> {
+    console.log('\n\nAutosearch asking "', question, '"...');
+
+    if(this.cantReturnFullObjects())
+      throw new Error('Please provide a getKeyFromObject function at creation to use autoSearch. Otherwise, use search instead.');
+
+    if(!this.callLLM)
+      throw new Error('Please provide a callLLM function at creation to use autoSearch. Otherwise, use search instead.');
+
+    const messages = this.generateSearchMessages(question);
+
+    const partialQuery = await this.getQueryFromLLM(messages);
+
+    const results = this.searchWithPartialQuery(partialQuery, printQueries) as ElementType[];
+
+    console.log('\nRounds left: ', optimizationRounds, ', got ', results.length, ' results.');
+
+    if(results.length)
+      console.log('\nTop result: ', toStringFunc(results[0]!));
+
+    if(optimizationRounds <= 0)
+      return results;
+
+    // prettier-ignore
+    const thoughtMessages: LLMCompatibleMessage[] = [{
+      role: 'system',
+      content:
+`You can only return valid JSON.
+
+Information is stored in tables with this schema:
+\`\`\`
+${generateSQLDDL(this.tables, true)}
+\`\`\``
+    }, {
+      role: 'user',
+      content:
+`The user had this question: ${question}
+
+Which generated this query to the tables provided: ${this.queryPrefix + ' ' + partialQuery}
+
+Which return ${results.length} results, here's the top one prettified:
+\"\"\"
+${results[0] && toStringFunc(results[0]) || 'No results'}
+\"\"\"
+
+We need to improve this. Return your analysis following this typespec, and be exhaustive and thorough.
+
+\'\'\'typescript
+${AnalysisTypespec}
+\`\`\`
+
+Valid JSON:`
+    }];
+
+    // console.log('Messages - ', JSON.stringify(thoughtMessages, null, 2));
+
+    console.log('\nAnalysing...');
+
+    function extractInnermostBraces(str: string): string {
+      const regex = /\{[^{}]*\}/;
+      const match = str.match(regex);
+
+      if (match) {
+        return match[0].slice(1, -1);  // Remove the outermost { and }
+      }
+
+      return str;
+    }
+
+    let analysisStr = await this.callLLM(thoughtMessages, this.queryPrefix);
+
+    analysisStr = extractInnermostBraces('{'+analysisStr!);
+
+    analysisStr = `{${analysisStr}}`
+
+    const analysis: Analysis = JSON.parse(analysisStr);
+
+    console.log('User desires: ', '\n - '+analysis.desires.join('\n - '));
+    console.log('Thoughts: ', '\n - '+analysis.thoughts.join('\n - '));
+    console.log('Better filters: ', '\n - '+analysis.betterFilters.join('\n - '));
+
+    return await this.autoSearch(analysis.betterQuestion, toStringFunc, optimizationRounds-1, printQueries);
   }
 
   /**

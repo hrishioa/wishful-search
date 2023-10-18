@@ -6,6 +6,17 @@
 import { DDLTable } from '../src/index';
 import { loadMovies } from './movies';
 
+export function stringifyMovie(movie: Movie) {
+  // Nicely template the name, adult type, budget, genres, language, companies, release date, languages, and tagline into a short string.
+  return `${movie.title} (${
+    movie.tagline
+  }): ${
+    movie.adult === 'True' ? 'adult' : 'non-adult'
+  } movie, budget $${movie.budget}, released ${
+    movie.release_date ? new Date(movie.release_date).toLocaleDateString() : ''
+  } in ${movie.original_language}. Genres: ${movie.genres.map((g) => g.name).join(', ')}. Produced by: ${movie.production_companies.map((c) => c.name).join(', ')}.`;
+}
+
 export type Movie = {
   adult: string;
   budget: string;

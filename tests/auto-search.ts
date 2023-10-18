@@ -89,11 +89,14 @@ const anthropic = new Anthropic();
     clearHistory: true
   }], true, false, true);
 
+  // const result = await wishfulSearchEngine.autoSearch('Something romantic to watch with my daughter tonight.', stringifyMovie, 4, true) as Movie[];
+  // console.log('\n\nRetrieved ', result.length, 'results.');
+  // console.log('Top result: ', result[0]);
+
   while(true) {
     const q = await question('\n\nWhat are you looking for? ');
-    const results = await wishfulSearchEngine.search(q, true) as Movie[];
-    console.log('\n\nRetrieved ', results.length, 'results.');
-    if(results.length)
-      console.log('Top result: ', stringifyMovie(results[0]!));
+    const result = await wishfulSearchEngine.autoSearch(q, stringifyMovie, 4, true) as Movie[];
+    console.log('\n\nRetrieved ', result.length, 'results.');
+    console.log('Top result: ', result[0]);
   }
 })();

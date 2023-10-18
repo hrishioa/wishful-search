@@ -89,3 +89,24 @@ export type LLMCallFunc = (
   messages: LLMCompatibleMessage[],
   queryPrefix?: string,
 ) => Promise<string | null>;
+
+
+// #################### AUTO-SEARCH ####################
+
+export type Analysis = {
+  successful: boolean; // Did the results successfully answer the user's question?
+  desires: string[]; // What did the user want? List what may not be in the question, but is implied (or what they don't know to look for).
+  thoughts: string[]; // Based on the DDL, the question and the desires, provide thoughts on how to improve results.
+  betterFilters: string[]; // What conditions (in English) could we have to get better results? Relax any filters that might be reducing results.
+  betterQuestion: string; // Reformat the question to include all of the above, which we can get another query from.
+}
+
+// prettier-ignore
+export const AnalysisTypespec =
+`type Analysis = {
+  successful: boolean; // Did the results successfully answer the user's question?
+  desires: string[]; // What did the user want? List what may not be in the question, but is implied (or what they don't know to look for).
+  thoughts: string[]; // Based on the DDL, the question and the desires, provide thoughts on how to improve results.
+  betterFilters: string[]; // What conditions (in English) could we have to get better results?
+  betterQuestion: string; // Reformat the question to include all of the above, which we can get another query from.
+}`
