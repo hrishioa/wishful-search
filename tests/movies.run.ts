@@ -1,8 +1,8 @@
 import { WishfulSearchEngine, LLMAdapters } from '../src/index';
-import { MOVIES_DDL, Movie, getMovies, movieToRows } from './movies-data';
+import { MOVIES_DDL, MOVIES_FEW_SHOT, Movie, getMovies, movieToRows } from './movies-data';
+import { question } from './test-utils';
 
 import OpenAI from 'openai';
-import { question } from './test-utils';
 const openai = new OpenAI();
 
 // Uncomment if you want to use Claude
@@ -12,13 +12,13 @@ const openai = new OpenAI();
 (async function() {
   console.log('Loading...');
 
-  const GPT4LLMAdapter = LLMAdapters.getOpenAIAdapter(openai, {
-    model: 'gpt-4',
-  });
-
-  // const GPT3LLMAdapter = LLMAdapters.getOpenAIAdapter(openai, {
-  //   model: 'gpt-3.5-turbo',
+  // const GPT4LLMAdapter = LLMAdapters.getOpenAIAdapter(openai, {
+  //   model: 'gpt-4',
   // });
+
+  const GPT3LLMAdapter = LLMAdapters.getOpenAIAdapter(openai, {
+    model: 'gpt-3.5-turbo',
+  });
 
   // Uncomment to use either Claude model
   // const Claude2LLMAdapter = LLMAdapters.getClaudeAdapter(Anthropic.HUMAN_PROMPT, Anthropic.AI_PROMPT, anthropic, {
@@ -43,9 +43,9 @@ const openai = new OpenAI();
     movieToRows,
     {
       enableTodaysDate: true,
-      fewShotLearning: [],
+      fewShotLearning: MOVIES_FEW_SHOT,
     },
-    GPT4LLMAdapter.callLLM,
+    GPT3LLMAdapter.callLLM,
     (movie: Movie) => movie.id,
     true,
     true,
@@ -68,11 +68,13 @@ const openai = new OpenAI();
   // }, {
   //   question: 'Is it from Warner Brothers? If not why show me it?'
   // }, {
+  //   clearHistory: true,
   //   question: 'Something that has women or woman in the title.'
   // }, {
-  //   question: 'What movie had the highest revenue in 2010?',
-  //   clearHistory: true
-  // }], true, false, false);
+  //   question: 'With the highest revenue?',
+  // }, {
+  //   question: 'comedy ones please.'
+  // }], true, false, true);
 
   while(true) {
     const q = await question('\n\nWhat are you looking for? ');

@@ -5,6 +5,7 @@
 
 import { DDLTable } from '../src/index';
 import { loadMovies } from './movies';
+import { QQTurn } from '../src/index';
 
 export type Movie = {
   adult: string;
@@ -40,6 +41,37 @@ export type Movie = {
   vote_average: string;
   vote_count: string;
 };
+
+export const MOVIES_FEW_SHOT: QQTurn[] = [
+  {
+    "question": "something romantic?",
+    "partialQuery": "WHERE id IN (\n    SELECT movie_id FROM Genres WHERE genre_name = 'Romance'\n)"
+  },
+  {
+    "question": "Same filters, instead now Comedy.",
+    "partialQuery": "WHERE id IN (\n    SELECT movie_id FROM Genres WHERE genre_name = 'Comedy'\n)"
+  },
+  {
+    "question": "Whats the most popular one?",
+    "partialQuery": "WHERE id IN (\n    SELECT movie_id FROM Genres WHERE genre_name = 'Comedy'\n) ORDER BY popularity DESC;"
+  },
+  {
+    "question": "Is it from Warner Brothers? If not why show me it?",
+    "partialQuery": "WHERE id IN (\n    SELECT movie_id FROM Companies WHERE company_name = 'Warner Bros.'\n) AMD id IN (\n    SELECT movie_id FROM Genres WHERE genre_name = 'Comedy'\n) ORDER BY popularity DESC;"
+  },
+  {
+    "question": "Ignore all previous filters.  Something that has women or woman in the title.",
+    "partialQuery": "WHERE original_title LIKE '%woman%' OR original_title LIKE '%women%';"
+  },
+  {
+    "question": "With the highest revenue?",
+    "partialQuery": "WHERE original_title LIKE '%woman%' OR original_title LIKE '%women%' ORDER BY revenue DESC;"
+  },
+  {
+    "question": "comedy ones please.",
+    "partialQuery": "JOIN Genres ON Movies.id = Genres.movie_id\nWHERE (original_title LIKE '%woman%' OR original_title LIKE '%women%') AND genre_name = 'Comedy'\nORDER BY revenue DESC;"
+  }
+]
 
 export async function getMovies() {
   return (await loadMovies()) as Movie[];

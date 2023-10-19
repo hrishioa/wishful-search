@@ -5,6 +5,8 @@ import { LLMCompatibleMessage, QQTurn } from './types';
  * wishful-search work.
  */
 
+export const HISTORY_RESET_COMMAND = 'Ignore all previous filters. ';
+
 // prettier-ignore
 const searchPrompt = {
   system: (ddl: string, dateStr?: string) =>
@@ -28,7 +30,7 @@ RULES:
 \"\"\"
 
 Provide an appropriate SQLite Query to return the keys to answer the user's question. Only filter by the things the user asked for, and only return ids or keys.` ,
-  user: (question: string, firstQuestion: boolean) => `${firstQuestion ? 'Ignore all previous filters. ': ''}${question}`,
+  user: (question: string, firstQuestion: boolean) => `${firstQuestion ? HISTORY_RESET_COMMAND: ''}${question}`,
   assistant: (query: string, queryPrefix: string) => `${queryPrefix} ${query}`,
 }
 
