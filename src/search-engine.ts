@@ -1,9 +1,10 @@
+import { generateAutoSearchMessages } from './autosearch';
 import { LLMSearcheableDatabase } from './db';
 import { generateLLMMessages } from './magic-search';
 import { generateSQLDDL, validateStructuredDDL } from './structured-ddl';
 import {
   Analysis,
-  AnalysisTypespec,
+  AutoSearchHistoryElement,
   DBColumn,
   DDLTable,
   LLMCallFunc,
@@ -346,8 +347,8 @@ export class WishfulSearchEngine<ElementType> {
     return partialQuery;
   }
 
-  async autoSearch(question: string, toStringFunc: (element: ElementType) => string, optimizationRounds: number, printQueries?: boolean): Promise<ElementType[]> {
-    console.log('\n\nAutosearch asking "', question, '"...');
+  async autoSearch(userQuestion: string, currentQuestion: string, toStringFunc: (element: ElementType) => string, optimizationRounds: number, successThreshold: number, history?: AutoSearchHistoryElement[], printQueries?: boolean): Promise<ElementType[]> {
+    console.log(`\n----------------------------------------------\nAutosearch Rounds Left: ${optimizationRounds+1},\n   Main Question: ${userQuestion}\n   Current question: ${currentQuestion}.\n   Searching...`)
 
     if(this.cantReturnFullObjects())
       throw new Error('Please provide a getKeyFromObject function at creation to use autoSearch. Otherwise, use search instead.');
@@ -355,50 +356,33 @@ export class WishfulSearchEngine<ElementType> {
     if(!this.callLLM)
       throw new Error('Please provide a callLLM function at creation to use autoSearch. Otherwise, use search instead.');
 
-    const messages = this.generateSearchMessages(question);
+    const messages = this.generateSearchMessages(currentQuestion);
 
     const partialQuery = await this.getQueryFromLLM(messages);
 
     const results = this.searchWithPartialQuery(partialQuery, printQueries) as ElementType[];
 
-    console.log('\nRounds left: ', optimizationRounds, ', got ', results.length, ' results.');
-
     if(results.length)
-      console.log('\nTop result: ', toStringFunc(results[0]!));
+      console.log(`\nFiltered ${results.length} from ${Object.keys(this.elementDict!).length}. Top result: `, toStringFunc(results[0]!));
+    else
+      console.log('\nNo results.');
 
     if(optimizationRounds <= 0)
       return results;
 
-    // prettier-ignore
-    const thoughtMessages: LLMCompatibleMessage[] = [{
-      role: 'system',
-      content:
-`You can only return valid JSON.
+    if(!history)
+      history = [];
 
-Information is stored in tables with this schema:
-\`\`\`
-${generateSQLDDL(this.tables, true)}
-\`\`\``
-    }, {
-      role: 'user',
-      content:
-`The user had this question: ${question}
+    history.push({
+      question: currentQuestion,
+      query: this.queryPrefix + ' ' + partialQuery,
+      results: {
+        count: results.length,
+        topResultStr: results.length ? toStringFunc(results[0]!) : 'No results.'
+      }
+    })
 
-Which generated this query to the tables provided: ${this.queryPrefix + ' ' + partialQuery}
-
-Which return ${results.length} results, here's the top one prettified:
-\"\"\"
-${results[0] && toStringFunc(results[0]) || 'No results'}
-\"\"\"
-
-We need to improve this. Return your analysis following this typespec, and be exhaustive and thorough.
-
-\'\'\'typescript
-${AnalysisTypespec}
-\`\`\`
-
-Valid JSON:`
-    }];
+    const thoughtMessages = generateAutoSearchMessages(generateSQLDDL(this.tables, true), userQuestion, history);
 
     // console.log('Messages - ', JSON.stringify(thoughtMessages, null, 2));
 
@@ -417,17 +401,38 @@ Valid JSON:`
 
     let analysisStr = await this.callLLM(thoughtMessages, this.queryPrefix);
 
-    analysisStr = extractInnermostBraces('{'+analysisStr!);
+    if(!analysisStr)
+      throw new Error('Could not generate analysis from LLM.');
+
+    analysisStr = extractInnermostBraces('{'+analysisStr!+'}');
 
     analysisStr = `{${analysisStr}}`
 
-    const analysis: Analysis = JSON.parse(analysisStr);
+    try {
+      const analysis: Analysis = JSON.parse(analysisStr);
 
-    console.log('User desires: ', '\n - '+analysis.desires.join('\n - '));
-    console.log('Thoughts: ', '\n - '+analysis.thoughts.join('\n - '));
-    console.log('Better filters: ', '\n - '+analysis.betterFilters.join('\n - '));
+      console.log(`Success: ${analysis.suitability} (${analysis.suitabilityDesc}), Success threshold: ${successThreshold}`);
 
-    return await this.autoSearch(analysis.betterQuestion, toStringFunc, optimizationRounds-1, printQueries);
+      history[history.length-1]!.suitabilityDesc = analysis.suitabilityDesc;
+      history[history.length-1]!.suitabilityScore = analysis.suitability;
+
+      if(analysis.suitability >= successThreshold) {
+        console.log('Success! Returning results.');
+        return results;
+      }
+
+      console.log('\nUser desires: ', '\n - '+analysis.desires.join('\n - '));
+      console.log('\nThoughts: ', '\n - '+analysis.thoughts.join('\n - '));
+      console.log('\nBetter filters: ', '\n - '+analysis.betterFilters.join('\n - '));
+
+      console.log('\n\nBetter question: ', analysis.betterQuestion);
+
+      return await this.autoSearch(userQuestion, analysis.betterQuestion, toStringFunc, optimizationRounds-1, successThreshold, history, printQueries);
+    } catch(err) {
+      console.error('Could not parse JSON analysis from this string - ', analysisStr, ' - ', err);
+
+      return results;
+    }
   }
 
   /**

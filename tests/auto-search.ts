@@ -95,7 +95,7 @@ const anthropic = new Anthropic();
 
   while(true) {
     const q = await question('\n\nWhat are you looking for? ');
-    const result = await wishfulSearchEngine.autoSearch(q, stringifyMovie, 4, true) as Movie[];
+    const result = await wishfulSearchEngine.autoSearch(q, q, stringifyMovie, 4, 0.85) as Movie[];
     console.log('\n\nRetrieved ', result.length, 'results.');
     console.log('Top result: ', result[0]);
   }

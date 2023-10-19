@@ -90,23 +90,32 @@ export type LLMCallFunc = (
   queryPrefix?: string,
 ) => Promise<string | null>;
 
-
 // #################### AUTO-SEARCH ####################
 
+export type AutoSearchHistoryElement = {
+  question: string;
+  query: string;
+  results: { count: number; topResultStr: string };
+  suitabilityScore?: number;
+  suitabilityDesc?: string;
+};
+
 export type Analysis = {
-  successful: boolean; // Did the results successfully answer the user's question?
+  suitabilityDesc: string; // Describe how suitable or unsuitable the top result is to the user's question in one sentence.
+  suitability: number; // between 0 to 1, one if the top result matches the user's question and zero if not.
   desires: string[]; // What did the user want? List what may not be in the question, but is implied (or what they don't know to look for).
   thoughts: string[]; // Based on the DDL, the question and the desires, provide thoughts on how to improve results.
   betterFilters: string[]; // What conditions (in English) could we have to get better results? Relax any filters that might be reducing results.
   betterQuestion: string; // Reformat the question to include all of the above, which we can get another query from.
-}
+};
 
 // prettier-ignore
 export const AnalysisTypespec =
 `type Analysis = {
-  successful: boolean; // Did the results successfully answer the user's question?
+  suitabilityDesc: string; // Describe how suitable or unsuitable the top result is to the USER_QUESTION in one sentence.
+  suitability: number; // between 0 to 1, one if the top result matches the USER_QUESTION and zero if not.
   desires: string[]; // What did the user want? List what may not be in the question, but is implied (or what they don't know to look for).
   thoughts: string[]; // Based on the DDL, the question and the desires, provide thoughts on how to improve results.
   betterFilters: string[]; // What conditions (in English) could we have to get better results?
-  betterQuestion: string; // Reformat the question to include all of the above, which we can get another query from.
+  betterQuestion: string; // Reformat the question to include all of the above, to be used to generate a new query.
 }`
