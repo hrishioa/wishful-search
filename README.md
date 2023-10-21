@@ -33,6 +33,8 @@ WishfulSearch is a natural language search module for JSON arrays. Take any JSON
 
 *This repo is the work of one overworked dev, and meant to be for educational purposes. Use at your own risk!*
 
+**If you aren't new here, [check out autosearch!](#autosearch)**
+
 # Key Features
 
 * **AI Quickstart - just bring an object**
@@ -220,6 +222,16 @@ const results = (await wishfulSearchEngine.search(
   'Something romantic but not very short from the 80s',
 )) as Movie[];
 ```
+
+### Autosearch
+
+https://github.com/hrishioa/wishful-search/assets/973967/e7ed6b50-5963-4f04-84b3-2fc02c8303e2
+
+Autosearch adds analysis and looping to iteratively improve results. Standard search is blind - while the LLM is made aware of the contents of the tables, it doesn't know how it did.
+
+Autosearch provides this information back to the LLM, along with results of past rounds, to hypothesize about what the user wants, and what is being delivered. For more complex searches - where you have the tokens and time - this can greatly improve results. See `/tests/movies.autosearch.ts` for an example. 
+
+The function documentation explains each parameter for autosearch in more detail.
 
 # Example: Movies
 
