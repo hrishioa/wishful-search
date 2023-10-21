@@ -1,6 +1,6 @@
 import { generateAutoSearchMessages } from './autosearch';
 import { LLMSearcheableDatabase } from './db';
-import { generateLLMMessages } from './magic-search';
+import { HISTORY_RESET_COMMAND, generateLLMMessages } from './magic-search';
 import { generateSQLDDL, validateStructuredDDL } from './structured-ddl';
 import {
   Analysis,
@@ -509,7 +509,7 @@ export class WishfulSearchEngine<ElementType> {
 
         if (!noQuestionsWithZeroResults || results.length) {
           fewShotLearningBatch.push({
-            question: question.question,
+            question: `${question.clearHistory ? HISTORY_RESET_COMMAND+' ' : ''}${question.question}`,
             partialQuery,
           });
         } else {

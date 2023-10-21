@@ -1,8 +1,8 @@
 import { WishfulSearchEngine, LLMAdapters } from '../src/index';
-import { MOVIES_DDL, Movie, getMovies, movieToRows, stringifyMovie } from './movies-data';
+import { MOVIES_DDL, MOVIES_FEW_SHOT, Movie, getMovies, movieToRows, stringifyMovie } from './movies-data';
+import { question } from './test-utils';
 
 import OpenAI from 'openai';
-import { question } from './test-utils';
 const openai = new OpenAI();
 
 // Uncomment if you want to use Claude
@@ -57,7 +57,7 @@ const anthropic = new Anthropic();
     movieToRows,
     {
       enableTodaysDate: true,
-      fewShotLearning: [],
+      fewShotLearning: MOVIES_FEW_SHOT,
     },
     models[mainModel].callLLM,
     (movie: Movie) => movie.id,
