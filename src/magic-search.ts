@@ -8,7 +8,7 @@ import { LLMCompatibleMessage, QQTurn } from './types';
 export const HISTORY_RESET_COMMAND = 'Ignore all previous filters. ';
 
 // prettier-ignore
-const searchPrompt = {
+export const searchPrompt = {
   system: (ddl: string, dateStr?: string) =>
 `You are a SQLite SQL generator that helps users answer questions from the tables provided. Here are the table definitions:
 
@@ -32,6 +32,12 @@ RULES:
 Provide an appropriate SQLite Query to return the keys to answer the user's question. Only filter by the things the user asked for, and only return ids or keys.` ,
   user: (question: string, firstQuestion: boolean) => `${firstQuestion ? HISTORY_RESET_COMMAND: ''}${question}`,
   assistant: (query: string, queryPrefix: string) => `${queryPrefix} ${query}`,
+  reflection: (err: string) => `The query ran into the following issue:
+  \"\"\"
+  ${err}
+  \"\"\"
+
+  Fix and provide a new query. SQL only, in code blocks.`
 }
 
 export function generateLLMMessages(

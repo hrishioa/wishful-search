@@ -78,7 +78,7 @@ const openai = new OpenAI();
 
   while(true) {
     const q = await question('\n\nWhat are you looking for? ');
-    const result = await wishfulSearchEngine.search(q) as Movie[];
+    const result = await wishfulSearchEngine.search(q, true, true) as Movie[];
     console.log('\n\nRetrieved ', result.length, 'results.');
     console.log('Top result: ', result[0]);
   }

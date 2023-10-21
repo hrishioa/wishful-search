@@ -6,7 +6,7 @@
   "main": "dist/node/index.js",
   "module": "dist/node/index.js",
   "types": "dist/node/index.d.ts",
-  "browser": "dist/browser/wishful-search.js",
+  "browser": "release/wishful-search.js",
   "dependencies": {
     "sql.js": "^1.8.0"
   },

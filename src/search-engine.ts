@@ -1,6 +1,6 @@
 import { generateAutoSearchMessages } from './autosearch';
 import { LLMSearcheableDatabase } from './db';
-import { HISTORY_RESET_COMMAND, generateLLMMessages } from './magic-search';
+import { HISTORY_RESET_COMMAND, generateLLMMessages, searchPrompt } from './magic-search';
 import { generateSQLDDL, validateStructuredDDL } from './structured-ddl';
 import {
   Analysis,
@@ -464,16 +464,41 @@ export class WishfulSearchEngine<ElementType> {
    * the LLM, and returns either a list of keys or elements depending
    * on instantiating config.
    * @param question Search question from the user.
-   * @param printQuery Print the full query to the console.
+   * @param verbose Print more output to the console.
+   * @param reflectAndFix If the query fails, reflect and fix the query
    * @returns If getKeyFromObject is set, this returns a list of elements.
    * If not, returns a list of keys you can use yourself.
    */
-  async search(question: string, printQuery?: boolean): Promise<string[] | ElementType[]> {
+  async search(question: string, verbose?: boolean, reflectAndFix?: boolean): Promise<string[] | ElementType[]> {
     const messages = this.generateSearchMessages(question);
 
     const partialQuery = await this.getQueryFromLLM(messages);
 
-    return this.searchWithPartialQuery(partialQuery, printQuery);
+    try {
+      const results = this.searchWithPartialQuery(partialQuery, verbose);
+      return results;
+    } catch(err: any) {
+      if(reflectAndFix) {
+        console.error('Error in query ',partialQuery,' - ', err, ' - reflecting and fixing...');
+
+        messages.push({
+          role: 'assistant',
+          content: this.queryPrefix + ' ' + partialQuery
+        })
+        messages.push({
+          role: 'user',
+          content: searchPrompt.reflection(err.toString())
+        })
+
+        const fixedPartialQuery = await this.getQueryFromLLM(messages);
+
+        const fixedResults = this.searchWithPartialQuery(fixedPartialQuery, verbose);
+
+        return fixedResults;
+      } else {
+        throw err;
+      }
+    }
   }
 
   /**
