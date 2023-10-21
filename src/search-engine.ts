@@ -347,14 +347,34 @@ export class WishfulSearchEngine<ElementType> {
     return partialQuery;
   }
 
-  async autoSearch(userQuestion: string, currentQuestion: string, toStringFunc: (element: ElementType) => string, optimizationRounds: number, successThreshold: number, history?: AutoSearchHistoryElement[], printQueries?: boolean): Promise<ElementType[]> {
-    console.log(`\n----------------------------------------------\nAutosearch Rounds Left: ${optimizationRounds+1},\n   Main Question: ${userQuestion}\n   Current question: ${currentQuestion}.\n   Searching...`)
+  /**
+   * Runs more complex looping search until the best result is found.
+   * @param userQuestion The original user question.
+   * @param toStringFunc Function to stringify an element. Shorter is better, but include key fields.
+   * @param optimizationRounds Maximum number of rounds to optimize result.
+   * @param successThreshold Between 0 to 1, 1 is perfect match. Lower this if the LLM keeps looping without end.
+   * @param callLLM Optional - supply a smarter llm adapter.
+   * @param printQueries Print the queries to the console.
+   * @param verbose Print analysis and other step-related information.
+   * @param currentQuestion Optional - this is the optimized question in each loop. Edit/supply this if you want to intervene.
+   * @param history Optional - History of past results, queries and analysis.
+   * @returns
+   */
+  async autoSearch(userQuestion: string, toStringFunc: (element: ElementType) => string, optimizationRounds: number, successThreshold: number, callLLM?: LLMCallFunc | null, printQueries?: boolean, verbose?: boolean, currentQuestion?: string, history?: AutoSearchHistoryElement[]): Promise<ElementType[]> {
+    if(!currentQuestion)
+      currentQuestion = userQuestion;
+
+    if(verbose)
+      console.log(`\n----------------------------------------------\nAutosearch Rounds Left: ${optimizationRounds+1},\n   Main Question: ${userQuestion}\n   Current question: ${currentQuestion}.\n   Searching...`)
 
     if(this.cantReturnFullObjects())
       throw new Error('Please provide a getKeyFromObject function at creation to use autoSearch. Otherwise, use search instead.');
 
-    if(!this.callLLM)
-      throw new Error('Please provide a callLLM function at creation to use autoSearch. Otherwise, use search instead.');
+    if(!callLLM)
+      callLLM = this.callLLM;
+
+    if(!callLLM)
+      throw new Error('Please provide a callLLM function at creation or as a parameter to use autoSearch. Otherwise, use search instead.');
 
     const messages = this.generateSearchMessages(currentQuestion);
 
@@ -362,10 +382,11 @@ export class WishfulSearchEngine<ElementType> {
 
     const results = this.searchWithPartialQuery(partialQuery, printQueries) as ElementType[];
 
-    if(results.length)
-      console.log(`\nFiltered ${results.length} from ${Object.keys(this.elementDict!).length}. Top result: `, toStringFunc(results[0]!));
-    else
-      console.log('\nNo results.');
+    if(verbose)
+      if(results.length)
+        console.log(`\nFiltered ${results.length} from ${Object.keys(this.elementDict!).length}. Top result: `, toStringFunc(results[0]!));
+      else
+        console.log('\nNo results.');
 
     if(optimizationRounds <= 0)
       return results;
@@ -384,9 +405,8 @@ export class WishfulSearchEngine<ElementType> {
 
     const thoughtMessages = generateAutoSearchMessages(generateSQLDDL(this.tables, true), userQuestion, history);
 
-    // console.log('Messages - ', JSON.stringify(thoughtMessages, null, 2));
-
-    console.log('\nAnalysing...');
+    if(verbose)
+      console.log('\nAnalysing...');
 
     function extractInnermostBraces(str: string): string {
       const regex = /\{[^{}]*\}/;
@@ -399,7 +419,7 @@ export class WishfulSearchEngine<ElementType> {
       return str;
     }
 
-    let analysisStr = await this.callLLM(thoughtMessages, this.queryPrefix);
+    let analysisStr = await callLLM(thoughtMessages, this.queryPrefix);
 
     if(!analysisStr)
       throw new Error('Could not generate analysis from LLM.');
@@ -411,23 +431,27 @@ export class WishfulSearchEngine<ElementType> {
     try {
       const analysis: Analysis = JSON.parse(analysisStr);
 
-      console.log(`Success: ${analysis.suitability} (${analysis.suitabilityDesc}), Success threshold: ${successThreshold}`);
+      if(verbose)
+        console.log(`Success: ${analysis.suitability} (${analysis.suitabilityDesc}), Success threshold: ${successThreshold}`);
 
       history[history.length-1]!.suitabilityDesc = analysis.suitabilityDesc;
       history[history.length-1]!.suitabilityScore = analysis.suitability;
 
       if(analysis.suitability >= successThreshold) {
-        console.log('Success! Returning results.');
+        if(verbose)
+          console.log('Success! Returning results.');
         return results;
       }
 
-      console.log('\nUser desires: ', '\n - '+analysis.desires.join('\n - '));
-      console.log('\nThoughts: ', '\n - '+analysis.thoughts.join('\n - '));
-      console.log('\nBetter filters: ', '\n - '+analysis.betterFilters.join('\n - '));
+      if(verbose) {
+        console.log('\nUser desires: ', '\n - '+analysis.desires.join('\n - '));
+        console.log('\nThoughts: ', '\n - '+analysis.thoughts.join('\n - '));
+        console.log('\nBetter filters: ', '\n - '+analysis.betterFilters.join('\n - '));
 
-      console.log('\n\nBetter question: ', analysis.betterQuestion);
+        console.log('\n\nBetter question: ', analysis.betterQuestion);
+      }
 
-      return await this.autoSearch(userQuestion, analysis.betterQuestion, toStringFunc, optimizationRounds-1, successThreshold, history, printQueries);
+      return await this.autoSearch(userQuestion, toStringFunc, optimizationRounds-1, successThreshold, callLLM,printQueries, verbose, analysis.betterQuestion, history);
     } catch(err) {
       console.error('Could not parse JSON analysis from this string - ', analysisStr, ' - ', err);
 
