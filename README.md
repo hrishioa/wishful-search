@@ -24,7 +24,7 @@
 </p>
 
 <div align="center">
-  
+
 ![output2](https://github.com/hrishioa/wishful-search/assets/973967/34e2fa82-2ae2-442a-972d-a2ab97d51d5e)
 
 </div>
@@ -240,6 +240,10 @@ A few things happen in order to perform a search:
 2. Dynamic enum values are generated to help inform the LLM about the contents of each relevant column.
 3. User queries are translated into complete context, including table structure, contents, past questions, and passed to the LLM to generate a SQL query that retrieves the relevant ids.
 4. Results of the query are (optionally) used to retrieve the relevant object and returned to the caller.
+
+## Authenticating with APIs
+
+The simplest and safest method is going to be using `export OPENAI_API_KEY=XXXX` or `export ANTHROPIC_API_KEY=XXXX` before running your code. You can also instantiate your `openai` and `anthropic` objects with the API keys inside, as per the guides linked for each sdk above.
 
 ## Other utilities
 
