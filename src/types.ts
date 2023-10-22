@@ -117,7 +117,7 @@ export const AnalysisTypespec =
   desires: string[]; // What did the user want? List what may not be in the question, but is implied (or what they don't know to look for).
   thoughts: string[]; // Based on the DDL, the question and the desires, provide thoughts on how to improve results.
   betterFilters: string[]; // What conditions (in English) could we have to get better results?
-  betterQuestion: string; // Reformat the question to include all of the above, to be used to generate a new query. Be specific with numbers, and relax the question if no results keep being returned.
+  betterQuestion: string; // Reformat the question to include all of the above, to be used to generate a new query. Be specific with numbers, relax filtersand reduce the question size if no results are being returned.
 }`
 
 export const potentialArrayAnalysisFields = [
