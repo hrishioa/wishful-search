@@ -37,7 +37,7 @@ Provide an appropriate SQLite Query to return the keys to answer the user's ques
   ${err}
   \"\"\"
 
-  Fix and provide a new query. SQL only, in code blocks.`
+  Fix and provide only the new query. SQL only, in code blocks.`
 }
 
 export function generateLLMMessages(

@@ -214,7 +214,7 @@ export class LLMSearcheableDatabase<RowObject> {
               stmt.step();
             } catch (err) {
               if (errorOnInvalidRows)
-                throw new Error(`Error inserting row ${row[i]} - ${err}`);
+                throw new Error(`Error inserting row ${elementRows} - ${err}`);
               else
                 invalidRows.push({
                   index: i,

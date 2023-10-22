@@ -1,6 +1,11 @@
 import { generateAutoSearchMessages } from './autosearch';
 import { LLMSearcheableDatabase } from './db';
-import { HISTORY_RESET_COMMAND, generateLLMMessages, searchPrompt } from './magic-search';
+import { fixJSON } from './json-utils';
+import {
+  HISTORY_RESET_COMMAND,
+  generateLLMMessages,
+  searchPrompt,
+} from './magic-search';
 import { generateSQLDDL, validateStructuredDDL } from './structured-ddl';
 import {
   Analysis,
@@ -11,6 +16,7 @@ import {
   LLMCompatibleMessage,
   LLMConfig,
   QQTurn,
+  potentialArrayAnalysisFields,
 } from './types';
 
 /**
@@ -277,7 +283,7 @@ export class WishfulSearchEngine<ElementType> {
   }
 
   cantReturnFullObjects() {
-    return (!this.getKeyFromObject || !this.elementDict)
+    return !this.getKeyFromObject || !this.elementDict;
   }
 
   /**
@@ -287,7 +293,10 @@ export class WishfulSearchEngine<ElementType> {
    * @returns list of elements if getKeyFromObject is provided, else
    * returns a list of keys.
    */
-  searchWithPartialQuery(partialQuery: string, printQuery?: boolean): string[] | ElementType[] {
+  searchWithPartialQuery(
+    partialQuery: string,
+    printQuery?: boolean,
+  ): string[] | ElementType[] {
     if (this.saveHistory && this.latestIncompleteQuestion)
       this.history.push({
         question: this.latestIncompleteQuestion,
@@ -298,12 +307,11 @@ export class WishfulSearchEngine<ElementType> {
 
     const fullQuery = this.queryPrefix + ' ' + partialQuery;
 
-    if(printQuery)
-    console.log('\nQuery: ', fullQuery);
+    if (printQuery) console.log('\nQuery: ', fullQuery);
 
     const results = this.db.rawQuery(fullQuery);
 
-    if(this.cantReturnFullObjects()) return results;
+    if (this.cantReturnFullObjects()) return results;
     else
       return results
         .map((key) => this.elementDict![key])
@@ -344,6 +352,12 @@ export class WishfulSearchEngine<ElementType> {
       partialQuery = partialQuery.replace(selectFromRegex, '').trim();
     }
 
+    // if partialquery has ; in it we remove everything after it
+    const semicolonIndex = partialQuery.indexOf(';');
+    if (semicolonIndex !== -1) {
+      partialQuery = partialQuery.substring(0, semicolonIndex).trim();
+    }
+
     return partialQuery;
   }
 
@@ -360,21 +374,37 @@ export class WishfulSearchEngine<ElementType> {
    * @param history Optional - History of past results, queries and analysis.
    * @returns
    */
-  async autoSearch(userQuestion: string, toStringFunc: (element: ElementType) => string, optimizationRounds: number, successThreshold: number, callLLM?: LLMCallFunc | null, printQueries?: boolean, verbose?: boolean, currentQuestion?: string, history?: AutoSearchHistoryElement[]): Promise<ElementType[]> {
-    if(!currentQuestion)
-      currentQuestion = userQuestion;
+  async autoSearch(
+    userQuestion: string,
+    toStringFunc: (element: ElementType) => string,
+    optimizationRounds: number,
+    successThreshold: number,
+    callLLM?: LLMCallFunc | null,
+    printQueries?: boolean,
+    verbose?: boolean,
+    currentQuestion?: string,
+    history?: AutoSearchHistoryElement[],
+  ): Promise<ElementType[]> {
+    if (!currentQuestion) currentQuestion = userQuestion;
 
-    if(verbose)
-      console.log(`\n----------------------------------------------\nAutosearch Rounds Left: ${optimizationRounds+1},\n   Main Question: ${userQuestion}\n   Current question: ${currentQuestion}.\n   Searching...`)
+    if (verbose)
+      console.log(
+        `\n----------------------------------------------\nAutosearch Rounds Left: ${
+          optimizationRounds + 1
+        },\n   Main Question: ${userQuestion}\n   Current question: ${currentQuestion}.\n   Searching...`,
+      );
 
-    if(this.cantReturnFullObjects())
-      throw new Error('Please provide a getKeyFromObject function at creation to use autoSearch. Otherwise, use search instead.');
+    if (this.cantReturnFullObjects())
+      throw new Error(
+        'Please provide a getKeyFromObject function at creation to use autoSearch. Otherwise, use search instead.',
+      );
 
-    if(!callLLM)
-      callLLM = this.callLLM;
+    if (!callLLM) callLLM = this.callLLM;
 
-    if(!callLLM)
-      throw new Error('Please provide a callLLM function at creation or as a parameter to use autoSearch. Otherwise, use search instead.');
+    if (!callLLM)
+      throw new Error(
+        'Please provide a callLLM function at creation or as a parameter to use autoSearch. Otherwise, use search instead.',
+      );
 
     const messages = this.generateSearchMessages(currentQuestion);
 
@@ -383,46 +413,65 @@ export class WishfulSearchEngine<ElementType> {
     let results: ElementType[] = [];
 
     try {
-      results = this.searchWithPartialQuery(partialQuery, printQueries) as ElementType[];
-    } catch(err) {
-      if(verbose)
-        console.error('Error in query ',partialQuery,' - ', err, ' - reflecting and fixing...');
+      results = this.searchWithPartialQuery(
+        partialQuery,
+        printQueries,
+      ) as ElementType[];
+    } catch (err) {
+      if (verbose)
+        console.error(
+          'Error in query ',
+          partialQuery,
+          ' - reflecting and fixing...',
+        );
 
-      results = await this.attemptReflection([...messages], partialQuery, err, verbose) as ElementType[];
+      results = (await this.attemptReflection(
+        [...messages],
+        partialQuery,
+        err,
+        verbose,
+      )) as ElementType[];
     }
 
-    if(verbose)
-      if(results.length)
-        console.log(`\nFiltered ${results.length} from ${Object.keys(this.elementDict!).length}. Top result: `, toStringFunc(results[0]!));
-      else
-        console.log('\nNo results.');
+    if (verbose)
+      if (results.length)
+        console.log(
+          `\nFiltered ${results.length} from ${
+            Object.keys(this.elementDict!).length
+          }. Top result: `,
+          toStringFunc(results[0]!),
+        );
+      else console.log('\nNo results.');
 
-    if(optimizationRounds <= 0)
-      return results;
+    if (optimizationRounds <= 0) return results;
 
-    if(!history)
-      history = [];
+    if (!history) history = [];
 
     history.push({
       question: currentQuestion,
       query: this.queryPrefix + ' ' + partialQuery,
       results: {
         count: results.length,
-        topResultStr: results.length ? toStringFunc(results[0]!) : 'No results.'
-      }
-    })
+        topResultStr: results.length
+          ? toStringFunc(results[0]!)
+          : 'No results.',
+      },
+    });
 
-    const thoughtMessages = generateAutoSearchMessages(generateSQLDDL(this.tables, true), userQuestion, history);
+    const thoughtMessages = generateAutoSearchMessages(
+      generateSQLDDL(this.tables, true),
+      userQuestion,
+      history,
+    );
 
-    if(verbose)
-      console.log('\nAnalysing...');
+    if (verbose) console.log('\nAnalysing...');
 
     function extractInnermostBraces(str: string): string {
       const regex = /\{[^{}]*\}/;
       const match = str.match(regex);
 
       if (match) {
-        return match[0].slice(1, -1);  // Remove the outermost { and }
+        return match[0].slice(1, -1); // Remove the outermost { and }
       }
 
       return str;
@@ -430,47 +479,89 @@ export class WishfulSearchEngine<ElementType> {
 
     let analysisStr = await callLLM(thoughtMessages, this.queryPrefix);
 
-    if(!analysisStr)
-      throw new Error('Could not generate analysis from LLM.');
+    if (!analysisStr) throw new Error('Could not generate analysis from LLM.');
 
-    analysisStr = extractInnermostBraces('{'+analysisStr!+'}');
+    analysisStr = extractInnermostBraces('{' + analysisStr! + '}');
 
-    analysisStr = `{${analysisStr}}`
+    analysisStr = `{${analysisStr}}`;
 
     try {
-      const analysis: Analysis = JSON.parse(analysisStr);
+      const analysis: Analysis | null = await fixJSON(callLLM, analysisStr);
 
-      if(verbose)
-        console.log(`Success: ${analysis.suitability} (${analysis.suitabilityDesc}), Success threshold: ${successThreshold}`);
-
-      history[history.length-1]!.suitabilityDesc = analysis.suitabilityDesc;
-      history[history.length-1]!.suitabilityScore = analysis.suitability;
-
-      if(analysis.suitability >= successThreshold) {
-        if(verbose)
-          console.log('Success! Returning results.');
+      if (analysis === null) {
+        if (verbose && results.length)
+          console.log(
+            'No results, returning results from previous improvement ',
+            currentQuestion,
+          );
         return results;
       }
 
-      if(verbose) {
-        console.log('\nUser desires: ', '\n - '+analysis.desires.join('\n - '));
-        console.log('\nThoughts: ', '\n - '+analysis.thoughts.join('\n - '));
-        console.log('\nBetter filters: ', '\n - '+analysis.betterFilters.join('\n - '));
+      for (const potentialArrayField of potentialArrayAnalysisFields) {
+        if (!(analysis as any)[potentialArrayField])
+          (analysis as any)[potentialArrayField] = [];
+        else if (!Array.isArray((analysis as any)[potentialArrayField]))
+          (analysis as any)[potentialArrayField] = [
+            (analysis as any)[potentialArrayField],
+          ];
+      }
+
+      if (verbose)
+        console.log(
+          `Success: ${analysis.suitability} (${analysis.suitabilityDesc}), Success threshold: ${successThreshold}`,
+        );
+
+      history[history.length - 1]!.suitabilityDesc = analysis.suitabilityDesc;
+      history[history.length - 1]!.suitabilityScore = analysis.suitability;
+
+      if (analysis.suitability >= successThreshold) {
+        if (verbose) console.log('Success! Returning results.');
+        return results;
+      }
+
+      if (verbose) {
+        console.log(
+          '\nUser desires: ',
+          '\n - ' + analysis.desires.join('\n - '),
+        );
+        console.log('\nThoughts: ', '\n - ' + analysis.thoughts.join('\n - '));
+        console.log(
+          '\nBetter filters: ',
+          '\n - ' + analysis.betterFilters.join('\n - '),
+        );
 
         console.log('\n\nBetter question: ', analysis.betterQuestion);
       }
 
-      const betterResults = await this.autoSearch(userQuestion, toStringFunc, optimizationRounds-1, successThreshold, callLLM,printQueries, verbose, analysis.betterQuestion, history);
+      const betterResults = await this.autoSearch(
+        userQuestion,
+        toStringFunc,
+        optimizationRounds - 1,
+        successThreshold,
+        callLLM,
+        printQueries,
+        verbose,
+        analysis.betterQuestion,
+        history,
+      );
 
-      if(!betterResults.length) {
-        if(verbose && results.length)
-          console.log('No results, returning results from previous improvement ', currentQuestion);
+      if (!betterResults.length) {
+        if (verbose && results.length)
+          console.log(
+            'No results, returning results from previous improvement ',
+            currentQuestion,
+          );
         return results;
       } else {
         return betterResults;
       }
-    } catch(err) {
-      console.error('Could not parse JSON analysis from this string - ', analysisStr, ' - ', err);
+    } catch (err) {
+      console.error(
+        'Could not parse JSON analysis from this string - ',
+        analysisStr,
+        ' - ',
+        err,
+      );
 
       return results;
     }
@@ -486,7 +577,11 @@ export class WishfulSearchEngine<ElementType> {
    * @returns If getKeyFromObject is set, this returns a list of elements.
    * If not, returns a list of keys you can use yourself.
    */
-  async search(question: string, verbose?: boolean, reflectAndFix?: boolean): Promise<string[] | ElementType[]> {
+  async search(
+    question: string,
+    verbose?: boolean,
+    reflectAndFix?: boolean,
+  ): Promise<string[] | ElementType[]> {
     const messages = this.generateSearchMessages(question);
 
     const partialQuery = await this.getQueryFromLLM(messages);
@@ -494,9 +589,14 @@ export class WishfulSearchEngine<ElementType> {
     try {
       const results = this.searchWithPartialQuery(partialQuery, verbose);
       return results;
-    } catch(err: any) {
-      if(reflectAndFix) {
-        return await this.attemptReflection([...messages], partialQuery, err, verbose);
+    } catch (err: any) {
+      if (reflectAndFix) {
+        return await this.attemptReflection(
+          [...messages],
+          partialQuery,
+          err,
+          verbose,
+        );
       } else {
         throw err;
       }
@@ -511,27 +611,37 @@ export class WishfulSearchEngine<ElementType> {
    * @param verbose
    * @returns
    */
-  async attemptReflection(searchMessages: LLMCompatibleMessage[], partialQuery: string, err: any, verbose?: boolean){
-    if(verbose)
-      console.error('Error in query ',partialQuery,' - ', err, ' - reflecting and fixing...');
+  async attemptReflection(
+    searchMessages: LLMCompatibleMessage[],
+    partialQuery: string,
+    err: any,
+    verbose?: boolean,
+  ) {
+    if (verbose)
+      console.error(
+        'Error in query ',
+        partialQuery,
+        ' - reflecting and fixing...',
+      );
 
     searchMessages.push({
       role: 'assistant',
-      content: this.queryPrefix + ' ' + partialQuery
-    })
+      content: this.queryPrefix + ' ' + partialQuery,
+    });
     searchMessages.push({
       role: 'user',
-      content: searchPrompt.reflection(err.toString())
-    })
+      content: searchPrompt.reflection(err.toString()),
+    });
 
     const fixedPartialQuery = await this.getQueryFromLLM(searchMessages);
 
-    const fixedResults = this.searchWithPartialQuery(fixedPartialQuery, verbose);
+    const fixedResults = this.searchWithPartialQuery(
+      fixedPartialQuery,
+      verbose,
+    );
 
     return fixedResults;
   }
-
-
 
   /**
    * Generate few-shot examples using a smarter model,
@@ -581,7 +691,7 @@ export class WishfulSearchEngine<ElementType> {
           this.generateSearchMessages(question.question),
         );
 
-        if(verbose)
+        if (verbose)
           console.log(`Full Query: ${this.queryPrefix} ${partialQuery}`);
 
         const results = this.searchWithPartialQuery(partialQuery);
@@ -590,15 +700,15 @@ export class WishfulSearchEngine<ElementType> {
 
         if (!noQuestionsWithZeroResults || results.length) {
           fewShotLearningBatch.push({
-            question: `${question.clearHistory ? HISTORY_RESET_COMMAND+' ' : ''}${question.question}`,
+            question: `${
+              question.clearHistory ? HISTORY_RESET_COMMAND + ' ' : ''
+            }${question.question}`,
             partialQuery,
           });
         } else {
           if (verbose) console.log('Skipping question with 0 results.');
           this.history = tempHistoryBackup;
         }
-
-
       } catch (err) {
         if (errorOnInvalidQuestions) {
           this.history = historyBackup;

@@ -119,3 +119,9 @@ export const AnalysisTypespec =
   betterFilters: string[]; // What conditions (in English) could we have to get better results?
   betterQuestion: string; // Reformat the question to include all of the above, to be used to generate a new query. Be specific with numbers, and relax the question if no results keep being returned.
 }`
+
+export const potentialArrayAnalysisFields = [
+  'desires',
+  'thoughts',
+  'betterFilters',
+];
