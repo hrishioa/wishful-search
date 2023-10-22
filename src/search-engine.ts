@@ -380,7 +380,16 @@ export class WishfulSearchEngine<ElementType> {
 
     const partialQuery = await this.getQueryFromLLM(messages);
 
-    const results = this.searchWithPartialQuery(partialQuery, printQueries) as ElementType[];
+    let results: ElementType[] = [];
+
+    try {
+      results = this.searchWithPartialQuery(partialQuery, printQueries) as ElementType[];
+    } catch(err) {
+      if(verbose)
+        console.error('Error in query ',partialQuery,' - ', err, ' - reflecting and fixing...');
+
+      results = await this.attemptReflection([...messages], partialQuery, err, verbose) as ElementType[];
+    }
 
     if(verbose)
       if(results.length)
@@ -451,7 +460,15 @@ export class WishfulSearchEngine<ElementType> {
         console.log('\n\nBetter question: ', analysis.betterQuestion);
       }
 
-      return await this.autoSearch(userQuestion, toStringFunc, optimizationRounds-1, successThreshold, callLLM,printQueries, verbose, analysis.betterQuestion, history);
+      const betterResults = await this.autoSearch(userQuestion, toStringFunc, optimizationRounds-1, successThreshold, callLLM,printQueries, verbose, analysis.betterQuestion, history);
+
+      if(!betterResults.length) {
+        if(verbose && results.length)
+          console.log('No results, returning results from previous improvement ', currentQuestion);
+        return results;
+      } else {
+        return betterResults;
+      }
     } catch(err) {
       console.error('Could not parse JSON analysis from this string - ', analysisStr, ' - ', err);
 
@@ -479,27 +496,42 @@ export class WishfulSearchEngine<ElementType> {
       return results;
     } catch(err: any) {
       if(reflectAndFix) {
-        console.error('Error in query ',partialQuery,' - ', err, ' - reflecting and fixing...');
-
-        messages.push({
-          role: 'assistant',
-          content: this.queryPrefix + ' ' + partialQuery
-        })
-        messages.push({
-          role: 'user',
-          content: searchPrompt.reflection(err.toString())
-        })
-
-        const fixedPartialQuery = await this.getQueryFromLLM(messages);
-
-        const fixedResults = this.searchWithPartialQuery(fixedPartialQuery, verbose);
-
-        return fixedResults;
+        return await this.attemptReflection([...messages], partialQuery, err, verbose);
       } else {
         throw err;
       }
     }
   }
+
+  /**
+   * Reflect errors back to the LLM and attempt a fix.
+   * @param searchMessages
+   * @param partialQuery
+   * @param err
+   * @param verbose
+   * @returns
+   */
+  async attemptReflection(searchMessages: LLMCompatibleMessage[], partialQuery: string, err: any, verbose?: boolean){
+    if(verbose)
+      console.error('Error in query ',partialQuery,' - ', err, ' - reflecting and fixing...');
+
+    searchMessages.push({
+      role: 'assistant',
+      content: this.queryPrefix + ' ' + partialQuery
+    })
+    searchMessages.push({
+      role: 'user',
+      content: searchPrompt.reflection(err.toString())
+    })
+
+    const fixedPartialQuery = await this.getQueryFromLLM(searchMessages);
+
+    const fixedResults = this.searchWithPartialQuery(fixedPartialQuery, verbose);
+
+    return fixedResults;
+  }
+
+
 
   /**
    * Generate few-shot examples using a smarter model,
