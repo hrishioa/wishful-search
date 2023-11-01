@@ -242,8 +242,6 @@ export class WishfulSearchEngine<ElementType> {
       }
     }
 
-    console.log(generateSQLDDL(this.tables, true));
-
     return insertErrors;
   }
 

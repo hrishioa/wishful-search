@@ -174,16 +174,11 @@ export function getLMStudioAdapter(
       const { prompt, stopSequences } =
         LLMTemplateFunctions[template](messages);
 
-      console.log('Calling LMStudio...');
-      // console.log(`Calling LMStudio ${template} with prompt:\n\n${prompt}\n\n`);
-
       const completion = await modifiedOpenAI.chat.completions.create({
         messages: [{ role: 'user', content: prompt }],
         ...{ ...DEFAULT_PARAMS, ...(params || {}) },
         stop: stopSequences,
       });
-
-      console.log('Got response ', completion.choices[0], '\n\n');
 
       return (
         (completion &&
