@@ -242,6 +242,8 @@ export class WishfulSearchEngine<ElementType> {
       }
     }
 
+    console.log(generateSQLDDL(this.tables, true));
+
     return insertErrors;
   }
 
@@ -477,7 +479,7 @@ export class WishfulSearchEngine<ElementType> {
       return str;
     }
 
-    let analysisStr = await callLLM(thoughtMessages, this.queryPrefix);
+    let analysisStr = await callLLM(thoughtMessages);
 
     if (!analysisStr) throw new Error('Could not generate analysis from LLM.');
 

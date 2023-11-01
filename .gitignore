@@ -21,6 +21,7 @@ lib
 public/css/main.css
 
 tests/**/flights*
+tests/**/iino*
 
 # Coverage reports
 coverage

@@ -1,3 +1,4 @@
+import { LLMTemplateFunctions } from './llm-templates';
 import { callOllama } from './ollama';
 import {
   CommonLLMParameters,
@@ -13,6 +14,7 @@ interface MinimalOpenAIModule {
         messages: LLMCompatibleMessage[];
         model: string;
         temperature?: number;
+        stop?: string | string[] | null;
       }) => Promise<{
         choices: { message: { content: string | null } }[];
       }>;
@@ -34,28 +36,6 @@ interface MinimalAnthropicModule {
 }
 
 export function getMistralAdapter(params?: CommonLLMParameters) {
-  function generateMistralPrompt(messages: LLMCompatibleMessage[]) {
-    `<s>[INST] {{ user_msg_1 }} [/INST] {{ model_answer_1 }}</s> [INST] {{ user_msg_2 }} [/INST] {{ model_answer_2 }}</s>`;
-
-    const prompt = messages
-      .map((message, index) =>
-        message.role === 'assistant'
-          ? `${message.content}${index < messages.length - 1 ? `</s>` : ''}`
-          : `${
-              index > 0 && messages[index - 1]!.role !== 'assistant'
-                ? ''
-                : '<s>'
-            }[INST] ${
-              message.role === 'system'
-                ? `<system>${message.content}</system>`
-                : message.content
-            } [/INST]`,
-      )
-      .join(' ');
-
-    return prompt;
-  }
-
   const DEFAULT_MISTRAL_PARAMS = {
     model: 'mistral',
     temperature: 0,
@@ -81,7 +61,8 @@ export function getMistralAdapter(params?: CommonLLMParameters) {
           content: queryPrefix,
         });
 
-      const prompt = generateMistralPrompt(messages);
+      const { prompt, stopSequences } =
+        LLMTemplateFunctions['mistral'](messages);
 
       const response = await callOllama(
         prompt,
@@ -92,7 +73,7 @@ export function getMistralAdapter(params?: CommonLLMParameters) {
 
       for await (const token of response) {
         if (token.type === 'completeMessage') {
-          return token.message.split('</s>')[0] || null;
+          return token.message.split(stopSequences[0]!)[0] || null;
         }
       }
 
@@ -156,6 +137,68 @@ function getClaudeAdapter(
   return adapter;
 }
 
+export type LocalModelParameters = CommonLLMParameters & {
+  model: keyof typeof LLMTemplateFunctions;
+};
+
+export function getLMStudioAdapter(
+  modifiedOpenAI: MinimalOpenAIModule,
+  template: keyof typeof LLMTemplateFunctions,
+  params?: LocalModelParameters,
+) {
+  const DEFAULT_PARAMS: LocalModelParameters = {
+    model: 'mistral',
+    temperature: 0,
+  };
+
+  const DEFAULT_LLM_CONFIG: LLMConfig = {
+    enableTodaysDate: true,
+    fewShotLearning: [],
+  };
+
+  const adapter: {
+    llmConfig: LLMConfig;
+    callLLM: LLMCallFunc;
+  } = {
+    llmConfig: DEFAULT_LLM_CONFIG,
+    callLLM: async function callLLM(
+      messages: LLMCompatibleMessage[],
+      queryPrefix?: string,
+    ) {
+      if (queryPrefix && messages[messages.length - 1]!.role !== 'assistant')
+        messages.push({
+          role: 'assistant',
+          content: queryPrefix,
+        });
+
+      const { prompt, stopSequences } =
+        LLMTemplateFunctions[template](messages);
+
+      console.log('Calling LMStudio...');
+      // console.log(`Calling LMStudio ${template} with prompt:\n\n${prompt}\n\n`);
+
+      const completion = await modifiedOpenAI.chat.completions.create({
+        messages: [{ role: 'user', content: prompt }],
+        ...{ ...DEFAULT_PARAMS, ...(params || {}) },
+        stop: stopSequences,
+      });
+
+      console.log('Got response ', completion.choices[0], '\n\n');
+
+      return (
+        (completion &&
+          completion.choices &&
+          completion.choices.length &&
+          completion.choices[0] &&
+          completion.choices[0].message.content) ||
+        null
+      );
+    },
+  };
+
+  return adapter;
+}
+
 function getOpenAIAdapter(
   openai: MinimalOpenAIModule,
   params?: CommonLLMParameters,
@@ -212,6 +255,7 @@ const adapters = {
   getOpenAIAdapter,
   getClaudeAdapter,
   getMistralAdapter,
+  getLMStudioAdapter,
 };
 
 export default adapters;
