@@ -196,15 +196,27 @@ export class WishfulSearchEngine<ElementType> {
           enumSettings.type === 'MIN_MAX' &&
           enumSettings.format === 'DATE'
         ) {
-          const numericEnums = enums.map((enumValue) => Date.parse(enumValue));
-          column.dynamicEnumData = {
-            type: 'MIN_MAX',
-            exceptions: enums.filter((enumValue) =>
-              isNaN(Date.parse(enumValue)),
-            ),
-            min: new Date(Math.min(...numericEnums)).toISOString(),
-            max: new Date(Math.max(...numericEnums)).toISOString(),
-          };
+          const numericEnums = enums
+            .map((enumValue) => Date.parse(enumValue))
+            .filter((val) => !isNaN(val));
+          try {
+            column.dynamicEnumData = {
+              type: 'MIN_MAX',
+              exceptions: enums.filter((enumValue) =>
+                isNaN(Date.parse(enumValue)),
+              ),
+              min: new Date(Math.min(...numericEnums)).toISOString(),
+              max: new Date(Math.max(...numericEnums)).toISOString(),
+            };
+          } catch (err) {
+            console.error(
+              'Could not parse date enums for column ',
+              column.name,
+              ' - ',
+              err,
+            );
+            console.error('Enums: ', numericEnums);
+          }
         } else if (enumSettings.type === 'EXHAUSTIVE_CHAR_LIMITED') {
           // Add examples until we hit the char limit
           const examples: string[] = [];
@@ -241,6 +253,9 @@ export class WishfulSearchEngine<ElementType> {
         this.elementDict[this.getKeyFromObject(element)] = element;
       }
     }
+
+    if (process.env.PRINT_WS_INTERNALS === 'yes')
+      console.log('Inserted. New DDL: ', generateSQLDDL(this.tables, true));
 
     return insertErrors;
   }

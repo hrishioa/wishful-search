@@ -25,6 +25,7 @@ RULES:
 2. Prefer \`strftime\` to format dates better.
 3. **Deliberately go through the question and database schema word by word** to appropriately answer the question
 4. Prefer sorting the right values to the top instead of filters if possible.
+5. Use LIKE instead of equality to compare strings.
 5. Number of segments for a direct flight is one.
 6. Try to continue the partial query.
 \"\"\"
