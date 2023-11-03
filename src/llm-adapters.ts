@@ -38,6 +38,13 @@ export function getMistralAdapter(params?: CommonLLMParameters) {
       const { prompt, stopSequences } =
         LLMTemplateFunctions['mistral'](messages);
 
+      if (process.env.PRINT_WS_INTERNALS === 'yes')
+        console.log(
+          `Asking ${
+            params?.model ?? DEFAULT_MISTRAL_PARAMS.model
+          } on Ollama...`,
+        );
+
       const response = await callOllama(
         prompt,
         params?.model ?? DEFAULT_MISTRAL_PARAMS.model,
@@ -107,6 +114,13 @@ function getClaudeAdapter(
           queryPrefix ? ` ${queryPrefix}` : ''
         }`;
       try {
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            `Asking ${
+              params?.model ?? DEFAULT_CLAUDE_PARAMS.model
+            } (Anthropic)...\n`,
+          );
+
         const completion = await anthropic.completions.create({
           prompt,
           max_tokens_to_sample: 10000,
@@ -175,6 +189,13 @@ export function getLMStudioAdapter(
         LLMTemplateFunctions[template](messages);
 
       try {
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            `Asking ${
+              params?.model ?? DEFAULT_PARAMS.model
+            } on your machine (LMStudio)...`,
+          );
+
         const completion = await modifiedOpenAI.chat.completions.create({
           messages: [{ role: 'user', content: prompt }],
           ...{ ...DEFAULT_PARAMS, ...(params || {}) },
@@ -236,6 +257,13 @@ function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
       }
 
       try {
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            `Asking ${
+              params?.model ?? DEFAULT_OPENAI_PARAMS.model
+            } (OpenAI)...`,
+          );
+
         const completion = await openai.chat.completions.create({
           messages,
           ...{ ...DEFAULT_OPENAI_PARAMS, ...(params || {}) },
