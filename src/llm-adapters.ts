@@ -6,34 +6,8 @@ import {
   LLMCompatibleMessage,
   LLMConfig,
 } from './types';
-
-interface MinimalOpenAIModule {
-  chat: {
-    completions: {
-      create: (params: {
-        messages: LLMCompatibleMessage[];
-        model: string;
-        temperature?: number;
-        stop?: string | string[] | null;
-      }) => Promise<{
-        choices: { message: { content: string | null } }[];
-      }>;
-    };
-  };
-}
-
-interface MinimalAnthropicModule {
-  completions: {
-    create: (params: {
-      prompt: string;
-      model: string;
-      max_tokens_to_sample: number;
-      temperature?: number;
-    }) => Promise<{
-      completion: string;
-    }>;
-  };
-}
+import type OpenAI from 'openai';
+import type Anthropic from '@anthropic-ai/sdk';
 
 export function getMistralAdapter(params?: CommonLLMParameters) {
   const DEFAULT_MISTRAL_PARAMS = {
@@ -71,8 +45,17 @@ export function getMistralAdapter(params?: CommonLLMParameters) {
         params?.temperature ?? DEFAULT_MISTRAL_PARAMS.temperature,
       );
 
+      if (process.env.PRINT_WS_INTERNALS === 'yes')
+        console.log('Streaming response: ');
+
       for await (const token of response) {
         if (token.type === 'completeMessage') {
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            process.stdout.write(
+              token.message.split(stopSequences[0]!)[0] ||
+                '<NO TOKEN RECEIVED>',
+            );
+
           return token.message.split(stopSequences[0]!)[0] || null;
         }
       }
@@ -87,7 +70,7 @@ export function getMistralAdapter(params?: CommonLLMParameters) {
 function getClaudeAdapter(
   humanPromptTag: string,
   assistantPromptTag: string,
-  anthropic: MinimalAnthropicModule,
+  anthropic: Anthropic,
   params?: CommonLLMParameters,
 ) {
   const DEFAULT_CLAUDE_PARAMS = {
@@ -123,14 +106,31 @@ function getClaudeAdapter(
         prompt += `${assistantPromptTag}${
           queryPrefix ? ` ${queryPrefix}` : ''
         }`;
+      try {
+        const completion = await anthropic.completions.create({
+          prompt,
+          max_tokens_to_sample: 10000,
+          ...{ ...DEFAULT_CLAUDE_PARAMS, ...(params || {}) },
+          stream: true,
+        });
 
-      const completion = await anthropic.completions.create({
-        prompt,
-        max_tokens_to_sample: 10000,
-        ...{ ...DEFAULT_CLAUDE_PARAMS, ...(params || {}) },
-      });
+        let fullMessage = '';
 
-      return completion.completion || null;
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log('Streaming response: ');
+
+        for await (const part of completion) {
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            process.stdout.write(part.completion || '');
+          fullMessage += part.completion || '';
+        }
+
+        return fullMessage || null;
+      } catch (err) {
+        console.error(`Error retrieving response from model ${params}`);
+        console.error(err);
+        return null;
+      }
     },
   };
 
@@ -142,7 +142,7 @@ export type LocalModelParameters = CommonLLMParameters & {
 };
 
 export function getLMStudioAdapter(
-  modifiedOpenAI: MinimalOpenAIModule,
+  modifiedOpenAI: OpenAI,
   template: keyof typeof LLMTemplateFunctions,
   params?: LocalModelParameters,
 ) {
@@ -174,30 +174,38 @@ export function getLMStudioAdapter(
       const { prompt, stopSequences } =
         LLMTemplateFunctions[template](messages);
 
-      const completion = await modifiedOpenAI.chat.completions.create({
-        messages: [{ role: 'user', content: prompt }],
-        ...{ ...DEFAULT_PARAMS, ...(params || {}) },
-        stop: stopSequences,
-      });
+      try {
+        const completion = await modifiedOpenAI.chat.completions.create({
+          messages: [{ role: 'user', content: prompt }],
+          ...{ ...DEFAULT_PARAMS, ...(params || {}) },
+          stop: stopSequences,
+          stream: true,
+        });
 
-      return (
-        (completion &&
-          completion.choices &&
-          completion.choices.length &&
-          completion.choices[0] &&
-          completion.choices[0].message.content) ||
-        null
-      );
+        let fullMessage = '';
+
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log('Streaming response: ');
+
+        for await (const part of completion) {
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            process.stdout.write(part.choices[0]?.delta?.content || '');
+          fullMessage += part.choices[0]?.delta?.content || '';
+        }
+
+        return fullMessage || null;
+      } catch (err) {
+        console.error(`Error retrieving response from model ${params}`);
+        console.error(err);
+        return null;
+      }
     },
   };
 
   return adapter;
 }
 
-function getOpenAIAdapter(
-  openai: MinimalOpenAIModule,
-  params?: CommonLLMParameters,
-) {
+function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
   const DEFAULT_OPENAI_PARAMS = {
     model: 'gpt-3.5-turbo',
     temperature: 0,
@@ -227,19 +235,30 @@ function getOpenAIAdapter(
         }\n\n${lastAssistantMessage}`;
       }
 
-      const completion = await openai.chat.completions.create({
-        messages,
-        ...{ ...DEFAULT_OPENAI_PARAMS, ...(params || {}) },
-      });
+      try {
+        const completion = await openai.chat.completions.create({
+          messages,
+          ...{ ...DEFAULT_OPENAI_PARAMS, ...(params || {}) },
+          stream: true,
+        });
 
-      return (
-        (completion &&
-          completion.choices &&
-          completion.choices.length &&
-          completion.choices[0] &&
-          completion.choices[0].message.content) ||
-        null
-      );
+        let fullMessage = '';
+
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log('Streaming response: ');
+
+        for await (const part of completion) {
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            process.stdout.write(part.choices[0]?.delta?.content || '');
+          fullMessage += part.choices[0]?.delta?.content || '';
+        }
+
+        return fullMessage || null;
+      } catch (err) {
+        console.error(`Error retrieving response from model ${params}`);
+        console.error(err);
+        return null;
+      }
     },
   };
 
