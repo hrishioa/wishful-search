@@ -23,6 +23,11 @@ export type InsertionErroredRow = {
   error: any;
 };
 
+export type RawResults = {
+  query: string;
+  rawResults: string[];
+};
+
 // ################################# Structured DDL
 
 export type DDLColumnBase = {
