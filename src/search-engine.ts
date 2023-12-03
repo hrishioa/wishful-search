@@ -16,6 +16,7 @@ import {
   LLMCompatibleMessage,
   LLMConfig,
   QQTurn,
+  RawResults,
   potentialArrayAnalysisFields,
 } from './types';
 
@@ -316,7 +317,7 @@ export class WishfulSearchEngine<ElementType> {
   searchWithPartialQuery(
     partialQuery: string,
     printQuery?: boolean,
-  ): string[] | ElementType[] {
+  ): RawResults | ElementType[] {
     if (this.saveHistory && this.latestIncompleteQuestion)
       this.history.push({
         question: this.latestIncompleteQuestion,
@@ -331,7 +332,11 @@ export class WishfulSearchEngine<ElementType> {
 
     const results = this.db.rawQuery(fullQuery);
 
-    if (this.cantReturnFullObjects() || this.rawQuery) return results;
+    if (this.cantReturnFullObjects() || this.rawQuery)
+      return {
+        query: fullQuery,
+        rawResults: results,
+      };
     else
       return results
         .map((key) => this.elementDict![key])
@@ -603,7 +608,7 @@ export class WishfulSearchEngine<ElementType> {
     question: string,
     verbose?: boolean,
     reflectAndFix?: boolean,
-  ): Promise<string[] | ElementType[]> {
+  ): Promise<RawResults | ElementType[]> {
     const messages = this.generateSearchMessages(question);
 
     const partialQuery = await this.getQueryFromLLM(messages);
@@ -689,6 +694,11 @@ export class WishfulSearchEngine<ElementType> {
         'It seems there is a search in progress, or partially completed. FewShot generation is best done at the very beginning, after seeding your data.',
       );
 
+    if (this.cantReturnFullObjects())
+      throw new Error(
+        'Please provide a getKeyFromObject function at creation to use autoFewShot Generation.',
+      );
+
     const historyBackup = [...this.history];
     const callLLMBackup = this.callLLM;
     this.history = [];
@@ -716,7 +726,9 @@ export class WishfulSearchEngine<ElementType> {
         if (verbose)
           console.log(`Full Query: ${this.queryPrefix} ${partialQuery}`);
 
-        const results = this.searchWithPartialQuery(partialQuery);
+        const results = this.searchWithPartialQuery(
+          partialQuery,
+        ) as ElementType[];
 
         if (verbose) console.log(`Got ${results.length} results.`);
 
