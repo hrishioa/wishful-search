@@ -3,6 +3,7 @@ import { LLMCompatibleMessage } from './types';
 export const LLMTemplateFunctions = {
   mistral: generateMistralPrompt,
   dolphin: generateDolphinPrompt,
+  'yarn-mistral': generateYarnPrompt,
 };
 
 function generateMistralPrompt(messages: LLMCompatibleMessage[]): {
@@ -52,5 +53,31 @@ function generateDolphinPrompt(messages: LLMCompatibleMessage[]): {
   return {
     prompt,
     stopSequences: ['<|im_end|>', '<|im_start|>'],
+  };
+}
+
+function generateYarnPrompt(messages: LLMCompatibleMessage[]): {
+  prompt: string;
+  stopSequences: string[];
+} {
+  let prompt = messages
+    .map((message, index) => {
+      if (message.role === 'system')
+        return `### Instruction: ${message.content}\n`;
+      else if (message.role === 'user')
+        return `### Instruction: ${message.content}\n`;
+      else
+        return `### Response: ${message.content}${
+          index < messages.length - 1 ? `\n` : ''
+        }`;
+    })
+    .join('\n');
+
+  if (messages[messages.length - 1]!.role !== 'assistant')
+    prompt += '\n### Response: ';
+
+  return {
+    prompt,
+    stopSequences: ['###'],
   };
 }

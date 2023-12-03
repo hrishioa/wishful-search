@@ -197,11 +197,13 @@ export class LLMSearcheableDatabase<RowObject> {
         const currentTable = this.tableNames[i];
         const columnCount = this.getColumnCount(currentTable!);
 
-        const stmt = this.db.prepare(
-          `INSERT OR IGNORE INTO ${currentTable} VALUES (${Array(columnCount)
-            .fill('?')
-            .join(',')})`,
-        );
+        const strStmt = `INSERT OR IGNORE INTO ${currentTable} VALUES (${Array(
+          columnCount,
+        )
+          .fill('?')
+          .join(',')})`;
+
+        const stmt = this.db.prepare(strStmt);
 
         try {
           this.db.run('BEGIN');
@@ -214,7 +216,13 @@ export class LLMSearcheableDatabase<RowObject> {
               stmt.step();
             } catch (err) {
               if (errorOnInvalidRows)
-                throw new Error(`Error inserting row ${elementRows} - ${err}`);
+                throw new Error(
+                  `Error running \"${strStmt}\" inserting row ${JSON.stringify(
+                    row,
+                    null,
+                    2,
+                  )} - ${err}`,
+                );
               else
                 invalidRows.push({
                   index: i,
@@ -225,6 +233,14 @@ export class LLMSearcheableDatabase<RowObject> {
 
           this.db.run('COMMIT');
         } catch (err) {
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.log(
+              'Error inserting in table ',
+              currentTable,
+              ', row',
+              JSON.stringify(elementRows, null, 2),
+              err,
+            );
           this.db.run('ROLLBACK');
           throw err;
         }
