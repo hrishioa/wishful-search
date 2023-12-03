@@ -21,13 +21,13 @@ ${dateStr ? `Today's date: ${dateStr}.` : ''}
 
 RULES:
 \"\"\"
-1. Do not use LIMIT, DISTINCT, ARRAY_LENGTH, MAX, MIN or AVG.
+1. Do not use LIMIT, DISTINCT, ARRAY_LENGTH, MAX, MIN or AVG if possible.
 2. Prefer \`strftime\` to format dates better.
 3. **Deliberately go through the question and database schema word by word** to appropriately answer the question
 4. Prefer sorting the right values to the top instead of filters if possible.
 5. Use LIKE instead of equality to compare strings.
 5. Number of segments for a direct flight is one.
-6. Try to continue the partial query.
+6. Try to continue the partial query if one is provided.
 \"\"\"
 
 Provide an appropriate SQLite Query to return the keys to answer the user's question. Only filter by the things the user asked for, and only return ids or keys.` ,
@@ -93,7 +93,7 @@ export function generateLLMMessages(
     content: searchPrompt.user(question, history.length > 0 ? false : true),
   });
 
-  if (!fewShotLearningBatch?.length)
+  if (!fewShotLearningBatch?.length && queryPrefix)
     messages.push({
       role: 'assistant',
       content: queryPrefix,
