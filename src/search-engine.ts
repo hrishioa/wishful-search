@@ -32,7 +32,6 @@ import {
 export class WishfulSearchEngine<ElementType> {
   private db: LLMSearcheableDatabase<ElementType>;
   private history: QQTurn[] = [];
-  private queryPrefix: string;
   private latestIncompleteQuestion: string | null;
   private callLLM: LLMCallFunc | null;
   private elementDict: {
@@ -82,7 +81,6 @@ export class WishfulSearchEngine<ElementType> {
     saveHistory: boolean = true,
     enableDynamicEnums = true,
     sortEnumsByFrequency = false,
-    complexAnalytics: boolean = false,
     sqljsWasmURL?: string,
   ) {
     validateStructuredDDL(tables);
@@ -106,7 +104,6 @@ export class WishfulSearchEngine<ElementType> {
       saveHistory,
       enableDynamicEnums,
       sortEnumsByFrequency,
-      complexAnalytics,
     );
 
     return searcheableDatabase;
@@ -125,10 +122,8 @@ export class WishfulSearchEngine<ElementType> {
     private readonly saveHistory: boolean,
     private readonly enableDynamicEnums: boolean,
     private readonly sortEnumsByFrequency: boolean,
-    private readonly complexAnalytics: boolean = false,
   ) {
     this.db = db;
-    this.queryPrefix = this.generateQueryPrefix();
     this.latestIncompleteQuestion = null;
     this.elementDict = getKeyFromObject ? {} : null;
     this.callLLM = callLLM;
@@ -139,8 +134,8 @@ export class WishfulSearchEngine<ElementType> {
    * SELECT query, and that it fetches the db primary key.
    * @returns
    */
-  private generateQueryPrefix() {
-    if (this.complexAnalytics) return 'SELECT ';
+  private getQueryPrefix(complexQuery: boolean = false) {
+    if (complexQuery) return 'SELECT ';
     return `SELECT ${this.primaryKey.column} FROM ${this.primaryKey.table}`;
   }
 
@@ -290,15 +285,19 @@ export class WishfulSearchEngine<ElementType> {
    * @param question A question from the user about the dataset.
    * @returns List of OpenAI-structured messages to the LLM.
    */
-  generateSearchMessages(question: string) {
+  generateSearchMessages(question: string, complexQuery: boolean = false) {
     if (this.saveHistory) this.latestIncompleteQuestion = question;
+
+    const queryPrefix = this.getQueryPrefix(complexQuery);
 
     return generateLLMMessages(
       generateSQLDDL(this.tables, true),
       question,
-      this.queryPrefix,
-      this.history,
-      this.llmConfig.fewShotLearning,
+      queryPrefix,
+      this.history.filter((turn) => turn.queryPrefix === queryPrefix),
+      this.llmConfig.fewShotLearning?.filter(
+        (turn) => turn.queryPrefix === queryPrefix,
+      ),
       this.llmConfig.enableTodaysDate,
     );
   }
@@ -317,20 +316,22 @@ export class WishfulSearchEngine<ElementType> {
   searchWithPartialQuery(
     partialQuery: string,
     printQuery?: boolean,
+    complexQuery: boolean = false,
   ): RawResults | ElementType[] {
     if (this.saveHistory && this.latestIncompleteQuestion)
       this.history.push({
+        queryPrefix: this.getQueryPrefix(complexQuery),
         question: this.latestIncompleteQuestion,
         partialQuery,
       });
 
     this.latestIncompleteQuestion = null;
 
-    const fullQuery = this.queryPrefix + ' ' + partialQuery;
+    const fullQuery = this.getQueryPrefix(complexQuery) + ' ' + partialQuery;
 
     if (printQuery) console.log('\nQuery: ', fullQuery);
 
-    if (this.complexAnalytics || this.cantReturnFullObjects()) {
+    if (this.cantReturnFullObjects() || complexQuery) {
       return {
         query: fullQuery,
         rawResults: this.db.complexQuery(fullQuery),
@@ -349,13 +350,19 @@ export class WishfulSearchEngine<ElementType> {
    * @param messages
    * @returns
    */
-  async getQueryFromLLM(messages: LLMCompatibleMessage[]) {
+  async getQueryFromLLM(
+    messages: LLMCompatibleMessage[],
+    complexQuery: boolean = false,
+  ) {
     if (!this.callLLM)
       throw new Error(
         'No LLM call function provided. Use generateSearchMessages instead if you intent to make your own calls.',
       );
 
-    let partialQuery = await this.callLLM(messages, this.queryPrefix);
+    let partialQuery = await this.callLLM(
+      messages,
+      this.getQueryPrefix(complexQuery),
+    );
 
     if (!partialQuery)
       throw new Error('Could not generate query from question with LLM');
@@ -367,12 +374,23 @@ export class WishfulSearchEngine<ElementType> {
         .replace(/```/g, '')
         .trim();
 
-    if (partialQuery.toLowerCase().startsWith(this.queryPrefix.toLowerCase())) {
-      partialQuery = partialQuery.substring(this.queryPrefix.length).trim();
+    if (
+      partialQuery
+        .toLowerCase()
+        .startsWith(this.getQueryPrefix(complexQuery).toLowerCase())
+    ) {
+      partialQuery = partialQuery
+        .substring(this.getQueryPrefix(complexQuery).length)
+        .trim();
     }
 
     // if partialquery starts with SELECT...FROM we remove that and the word after that
-    if (!this.complexAnalytics) {
+    if (complexQuery) {
+      const selectFromRegex = /^\s*?SELECT\s/;
+      if (selectFromRegex.test(partialQuery)) {
+        partialQuery = partialQuery.replace(selectFromRegex, '').trim();
+      }
+    } else {
       const selectFromRegex = /^\s*?SELECT[\s\S]*?FROM[\s\S]+?\s/;
       if (selectFromRegex.test(partialQuery)) {
         partialQuery = partialQuery.replace(selectFromRegex, '').trim();
@@ -456,6 +474,7 @@ export class WishfulSearchEngine<ElementType> {
         [...messages],
         partialQuery,
         err,
+        false,
         verbose,
       )) as ElementType[];
     }
@@ -476,7 +495,7 @@ export class WishfulSearchEngine<ElementType> {
 
     history.push({
       question: currentQuestion,
-      query: this.queryPrefix + ' ' + partialQuery,
+      query: this.getQueryPrefix(false) + ' ' + partialQuery,
       results: {
         count: results.length,
         topResultStr: results.length
@@ -594,6 +613,37 @@ export class WishfulSearchEngine<ElementType> {
     }
   }
 
+  async complexAnalytics(
+    question: string,
+    verbose: boolean = false,
+    reflectAndFix: boolean = true,
+  ): Promise<RawResults> {
+    const messages = this.generateSearchMessages(question, true);
+
+    const partialQuery = await this.getQueryFromLLM(messages, true);
+
+    try {
+      const results = this.searchWithPartialQuery(
+        partialQuery,
+        verbose,
+        true,
+      ) as RawResults;
+      return results;
+    } catch (err: any) {
+      if (reflectAndFix) {
+        return (await this.attemptReflection(
+          [...messages],
+          partialQuery,
+          err,
+          true,
+          verbose,
+        )) as RawResults;
+      } else {
+        throw err;
+      }
+    }
+  }
+
   /**
    * Full search function that generates the LLM messages, calls
    * the LLM, and returns either a list of keys or elements depending
@@ -622,6 +672,7 @@ export class WishfulSearchEngine<ElementType> {
           [...messages],
           partialQuery,
           err,
+          false,
           verbose,
         );
       } else {
@@ -642,6 +693,7 @@ export class WishfulSearchEngine<ElementType> {
     searchMessages: LLMCompatibleMessage[],
     partialQuery: string,
     err: any,
+    complexQuery: boolean = false,
     verbose?: boolean,
   ) {
     if (verbose)
@@ -653,18 +705,22 @@ export class WishfulSearchEngine<ElementType> {
 
     searchMessages.push({
       role: 'assistant',
-      content: this.queryPrefix + ' ' + partialQuery,
+      content: this.getQueryPrefix(complexQuery) + ' ' + partialQuery,
     });
     searchMessages.push({
       role: 'user',
       content: searchPrompt.reflection(err.toString()),
     });
 
-    const fixedPartialQuery = await this.getQueryFromLLM(searchMessages);
+    const fixedPartialQuery = await this.getQueryFromLLM(
+      searchMessages,
+      complexQuery,
+    );
 
     const fixedResults = this.searchWithPartialQuery(
       fixedPartialQuery,
       verbose,
+      complexQuery,
     );
 
     return fixedResults;
@@ -689,6 +745,8 @@ export class WishfulSearchEngine<ElementType> {
     errorOnInvalidQuestions: boolean = false,
     verbose: boolean = false,
   ): Promise<QQTurn[]> {
+    const queryPrefix = this.getQueryPrefix(false);
+
     if (this.latestIncompleteQuestion)
       throw new Error(
         'It seems there is a search in progress, or partially completed. FewShot generation is best done at the very beginning, after seeding your data.',
@@ -724,7 +782,9 @@ export class WishfulSearchEngine<ElementType> {
         );
 
         if (verbose)
-          console.log(`Full Query: ${this.queryPrefix} ${partialQuery}`);
+          console.log(
+            `Full Query: ${this.getQueryPrefix(false)} ${partialQuery}`,
+          );
 
         const results = this.searchWithPartialQuery(
           partialQuery,
@@ -734,6 +794,7 @@ export class WishfulSearchEngine<ElementType> {
 
         if (!noQuestionsWithZeroResults || results.length) {
           fewShotLearningBatch.push({
+            queryPrefix,
             question: `${
               question.clearHistory ? HISTORY_RESET_COMMAND + ' ' : ''
             }${question.question}`,
@@ -771,7 +832,11 @@ export class WishfulSearchEngine<ElementType> {
     this.history = historyBackup;
     this.callLLM = callLLMBackup;
 
-    this.llmConfig.fewShotLearning = fewShotLearningBatch;
+    this.llmConfig.fewShotLearning = this.llmConfig.fewShotLearning?.filter(
+      (turn) => turn.partialQuery !== queryPrefix,
+    );
+
+    this.llmConfig.fewShotLearning?.push(...fewShotLearningBatch);
 
     return fewShotLearningBatch;
   }
