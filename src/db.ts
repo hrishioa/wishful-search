@@ -1,4 +1,4 @@
-import initSqlJs, { Database, SqlJsStatic } from 'sql.js';
+import initSqlJs, { Database, QueryExecResult, SqlJsStatic } from 'sql.js';
 import { DBColumn, InsertionErroredRow } from './types';
 
 /**
@@ -125,8 +125,6 @@ export class LLMSearcheableDatabase<RowObject> {
    * @returns
    */
   rawQuery(query: string): string[] {
-    const result = this.db.exec(query);
-
     query = query.split(';')[0]!.trim();
 
     if (!query.toUpperCase().startsWith('SELECT'))
@@ -135,11 +133,29 @@ export class LLMSearcheableDatabase<RowObject> {
     if (query.indexOf(';') !== -1)
       throw new Error('Raw Query to db must be a single statement');
 
+    const result = this.db.exec(query);
+
     if (!result.length || !result[0]) return [];
 
     const keys = result[0].values.flat() as string[];
 
     return keys;
+  }
+
+  complexQuery(query: string): QueryExecResult[] {
+    query = query.split(';')[0]!.trim();
+
+    if (!query.toUpperCase().startsWith('SELECT'))
+      throw new Error('Raw Query to db must start with SELECT');
+
+    if (query.indexOf(';') !== -1)
+      throw new Error('Raw Query to db must be a single statement');
+
+    const result = this.db.exec(query);
+
+    if (!result.length || !result[0]) return [];
+
+    return result;
   }
 
   private getColumnCount(tableName: string): number {

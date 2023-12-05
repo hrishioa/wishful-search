@@ -1,5 +1,7 @@
 // ################################# LLM
 
+import { QueryExecResult } from 'sql.js';
+
 export type LLMCompatibleMessage = {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -25,7 +27,7 @@ export type InsertionErroredRow = {
 
 export type RawResults = {
   query: string;
-  rawResults: string[];
+  rawResults: QueryExecResult[];
 };
 
 // ################################# Structured DDL

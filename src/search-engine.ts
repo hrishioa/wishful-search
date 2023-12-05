@@ -66,7 +66,7 @@ export class WishfulSearchEngine<ElementType> {
    * @param sortEnumsByFrequency Whether to sort the enums provided to
    * the LLM by most common. Uses more resources, but significantly
    * improves results.
-   * @param rawQuery If true, no search prefix will be applied. DANGEROUS! Use at your own risk. If you do this, the raw SQL output will also be returned.
+   * @param complexAnalytics If true, no search prefix will be applied. DANGEROUS! Use at your own risk. If you do this, the raw SQL output will also be returned.
    * @param sqljsWasmURL Provide your own sqljs wasm if you're
    * client-side, or you would like to employ better caching.
    * @returns
@@ -82,7 +82,7 @@ export class WishfulSearchEngine<ElementType> {
     saveHistory: boolean = true,
     enableDynamicEnums = true,
     sortEnumsByFrequency = false,
-    rawQuery: boolean = false,
+    complexAnalytics: boolean = false,
     sqljsWasmURL?: string,
   ) {
     validateStructuredDDL(tables);
@@ -106,7 +106,7 @@ export class WishfulSearchEngine<ElementType> {
       saveHistory,
       enableDynamicEnums,
       sortEnumsByFrequency,
-      rawQuery,
+      complexAnalytics,
     );
 
     return searcheableDatabase;
@@ -125,7 +125,7 @@ export class WishfulSearchEngine<ElementType> {
     private readonly saveHistory: boolean,
     private readonly enableDynamicEnums: boolean,
     private readonly sortEnumsByFrequency: boolean,
-    private readonly rawQuery: boolean = false,
+    private readonly complexAnalytics: boolean = false,
   ) {
     this.db = db;
     this.queryPrefix = this.generateQueryPrefix();
@@ -140,7 +140,7 @@ export class WishfulSearchEngine<ElementType> {
    * @returns
    */
   private generateQueryPrefix() {
-    if (this.rawQuery) return 'SELECT ';
+    if (this.complexAnalytics) return 'SELECT ';
     return `SELECT ${this.primaryKey.column} FROM ${this.primaryKey.table}`;
   }
 
@@ -330,17 +330,17 @@ export class WishfulSearchEngine<ElementType> {
 
     if (printQuery) console.log('\nQuery: ', fullQuery);
 
-    const results = this.db.rawQuery(fullQuery);
-
-    if (this.cantReturnFullObjects() || this.rawQuery)
+    if (this.complexAnalytics || this.cantReturnFullObjects()) {
       return {
         query: fullQuery,
-        rawResults: results,
+        rawResults: this.db.complexQuery(fullQuery),
       };
-    else
-      return results
-        .map((key) => this.elementDict![key])
-        .filter((element) => !!element) as ElementType[];
+    }
+
+    const results = this.db.rawQuery(fullQuery);
+    return results
+      .map((key) => this.elementDict![key])
+      .filter((element) => !!element) as ElementType[];
   }
 
   /**
@@ -372,7 +372,7 @@ export class WishfulSearchEngine<ElementType> {
     }
 
     // if partialquery starts with SELECT...FROM we remove that and the word after that
-    if (!this.rawQuery) {
+    if (!this.complexAnalytics) {
       const selectFromRegex = /^\s*?SELECT[\s\S]*?FROM[\s\S]+?\s/;
       if (selectFromRegex.test(partialQuery)) {
         partialQuery = partialQuery.replace(selectFromRegex, '').trim();
