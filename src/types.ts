@@ -14,9 +14,11 @@ export type QQTurn = {
   partialQuery: string;
 };
 
+export type FactType = 'search' | 'analytics' | 'all';
+
 export type PromptFact = {
   factStr: string;
-  type: 'search' | 'analytics' | 'all';
+  type: FactType;
 };
 
 //################################### DB
