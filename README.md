@@ -153,7 +153,7 @@ Once you have these, you can create a new WishfulSearch instance:
 
 ```typescript
 const wishfulSearchEngine = await WishfulSearchEngine.create(
-    'flights', // Name for your search instance, for labelling
+    'movies', // Name for your search instance, for labelling
     MOVIES_DDL, // Structured DDL
     {
       table: 'Movies', // Primary table

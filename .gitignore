@@ -20,8 +20,6 @@ lib
 # Build
 public/css/main.css
 
-tests/**/flights*
-tests/**/iino*
 tests/**/analysis*
 
 # Coverage reports

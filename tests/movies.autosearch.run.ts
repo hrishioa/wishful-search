@@ -42,7 +42,7 @@ const openai = new OpenAI();
   // };
 
   const wishfulSearchEngine = await WishfulSearchEngine.create(
-    'flights',
+    'movies',
     MOVIES_DDL,
     {
       table: 'Movies',
