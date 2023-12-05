@@ -290,7 +290,7 @@ export class WishfulSearchEngine<ElementType> {
 
     const queryPrefix = this.getQueryPrefix(complexQuery);
 
-    return generateLLMMessages(
+    const messages = generateLLMMessages(
       generateSQLDDL(this.tables, true),
       question,
       queryPrefix,
@@ -300,6 +300,10 @@ export class WishfulSearchEngine<ElementType> {
       ),
       this.llmConfig.enableTodaysDate,
     );
+
+    console.log('Messages - ', JSON.stringify(messages, null, 2));
+
+    return messages;
   }
 
   cantReturnFullObjects() {

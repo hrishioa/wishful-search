@@ -14,6 +14,11 @@ export type QQTurn = {
   partialQuery: string;
 };
 
+export type PromptFact = {
+  factStr: string;
+  type: 'search' | 'analytics' | 'all';
+};
+
 //################################### DB
 
 export type DBColumn = {
