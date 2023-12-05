@@ -9,8 +9,14 @@ export type LLMCompatibleMessage = {
 
 // Question - Query turn for few-shot learning. Queries are partial queries.
 export type QQTurn = {
+  queryPrefix: string;
   question: string;
   partialQuery: string;
+};
+
+export type PromptFact = {
+  factStr: string;
+  type: 'search' | 'analytics' | 'all';
 };
 
 //################################### DB

@@ -1,4 +1,4 @@
-import { LLMCompatibleMessage, QQTurn } from './types';
+import { LLMCompatibleMessage, PromptFact, QQTurn } from './types';
 
 /**
  * This is the primary collection of prompt templates that makes
@@ -6,6 +6,40 @@ import { LLMCompatibleMessage, QQTurn } from './types';
  */
 
 export const HISTORY_RESET_COMMAND = 'Ignore all previous filters. ';
+
+const facts: PromptFact[] = [
+  {
+    factStr:
+      'Do not use LIMIT, DISTINCT, ARRAY_LENGTH, MAX, MIN or AVG if possible.',
+    type: 'search',
+  },
+  {
+    factStr: 'Try and find the right rows that can help the answer.',
+    type: 'search',
+  },
+  {
+    factStr: 'Prefer `strftime` to format dates better.',
+    type: 'all',
+  },
+  {
+    factStr:
+      '**Deliberately go through the question and database schema word by word** to appropriately answer the question.',
+    type: 'all',
+  },
+  {
+    factStr:
+      'Prefer sorting the right values to the top instead of filters if possible.',
+    type: 'all',
+  },
+  {
+    factStr: 'Use LIKE instead of equality to compare strings.',
+    type: 'all',
+  },
+  {
+    factStr: 'Try to continue the partial query if one is provided.',
+    type: 'all',
+  },
+];
 
 // prettier-ignore
 export const searchPrompt = {
@@ -21,12 +55,7 @@ ${dateStr ? `Today's date: ${dateStr}.` : ''}
 
 RULES:
 \"\"\"
-1. Do not use LIMIT, DISTINCT, ARRAY_LENGTH, MAX, MIN or AVG if possible.
-2. Prefer \`strftime\` to format dates better.
-3. **Deliberately go through the question and database schema word by word** to appropriately answer the question
-4. Prefer sorting the right values to the top instead of filters if possible.
-5. Use LIKE instead of equality to compare strings.
-6. Try to continue the partial query if one is provided.
+${facts.map((f, index) => `${index+1}. ${f.factStr}`).join('\n')}
 \"\"\"
 
 Provide an appropriate SQLite Query to return the keys to answer the user's question. Only filter by the things the user asked for, and only return ids or keys.` ,

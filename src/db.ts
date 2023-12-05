@@ -125,7 +125,26 @@ export class LLMSearcheableDatabase<RowObject> {
    * @returns
    */
   rawQuery(query: string): string[] {
+    const prohibitedKeywords = [
+      'INSERT',
+      'UPDATE',
+      'DELETE',
+      'CREATE',
+      'ALTER',
+      'DROP',
+      'PRAGMA',
+      'BEGIN',
+      'COMMIT',
+      'ROLLBACK',
+      'REPLACE',
+    ];
+
     query = query.split(';')[0]!.trim();
+
+    for (const keyword of prohibitedKeywords) {
+      if (query.toUpperCase().includes(keyword))
+        throw new Error(`Query must not have ${keyword}`);
+    }
 
     if (!query.toUpperCase().startsWith('SELECT'))
       throw new Error('Raw Query to db must start with SELECT');
