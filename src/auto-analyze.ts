@@ -149,7 +149,7 @@ DDL:
 \`\`\`sql
 ${ddl}
 \`\`\``,
-    user: `I need a typescript function called objectToRows to help me insert an object of type TYPESPEC using the sql.js library into tables structured with DDL. The function should take in an array of flight objects like TYPESPEC, and spit out a 3 dimensional string array, with each top level value for each table. Make sure typecast any initial values to prevent errors. Also make sure to check if top-level objects are null before accessing them. Use the Date function to make sure stringified dates are converted back when needed. Make sure none of the values are undefined because we'll insert them later. Use sensible defaults.`
+    user: `I need a typescript function called objectToRows to help me insert an object of type TYPESPEC using the sql.js library into tables structured with DDL. The function should take in an array of objects like TYPESPEC, and spit out a 3 dimensional string array, with each top level value for each table. Make sure typecast any initial values to prevent errors. Also make sure to check if top-level objects are null before accessing them. Use the Date function to make sure stringified dates are converted back when needed. Make sure none of the values are undefined because we'll insert them later. Use sensible defaults.`
   }
 }
 
