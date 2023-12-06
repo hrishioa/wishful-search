@@ -43,7 +43,7 @@ const facts: PromptFact[] = [
 
 // prettier-ignore
 export const searchPrompt = {
-  system: (ddl: string, dateStr?: string, factTypes?: FactType[]) =>
+  system: (ddl: string, dateStr?: string, searchType?: 'search' | 'analytics') =>
 `You are a SQLite SQL generator that helps users answer questions from the tables provided. Here are the table definitions:
 
 DATABASE_DDL:
@@ -55,10 +55,11 @@ ${dateStr ? `Today's date: ${dateStr}.` : ''}
 
 RULES:
 \"\"\"
-${facts.filter(fact => !factTypes || fact.type === 'all' || factTypes.includes(fact.type)).map((f, index) => `${index+1}. ${f.factStr}`).join('\n')}
+${facts.filter(fact => !searchType || fact.type === 'all' || fact.type === searchType).map((f, index) => `${index+1}. ${f.factStr}`).join('\n')}
 \"\"\"
 
-Provide an appropriate SQLite Query to return the keys to answer the user's question. Only filter by the things the user asked for, and only return ids or keys.` ,
+${searchType === 'search' ? `Provide an appropriate SQLite Query to return the keys to answer the user's question. Only filter by the things the user asked for, and only return ids or keys.` :
+'Provide an appropriate SQLite query to return the answer to the user\'s question. Add any fields that would be helpful to explain the result but not too many.'}` ,
   user: (question: string, firstQuestion: boolean) => `${firstQuestion ? HISTORY_RESET_COMMAND: ''}${question}`,
   assistant: (query: string, queryPrefix: string) => `${queryPrefix} ${query}`,
   reflection: (err: string) => `The query ran into the following issue:
@@ -86,7 +87,7 @@ export function generateLLMMessages(
 
   messages.push({
     role: 'system',
-    content: searchPrompt.system(dbDDL, dateStr, [searchType]),
+    content: searchPrompt.system(dbDDL, dateStr, searchType),
   });
 
   if (fewShotLearningBatch) {

@@ -302,8 +302,6 @@ export class WishfulSearchEngine<ElementType> {
       this.llmConfig.enableTodaysDate,
     );
 
-    console.log('Messages - ', JSON.stringify(messages, null, 2));
-
     return messages;
   }
 
