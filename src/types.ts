@@ -21,6 +21,36 @@ export type PromptFact = {
   type: FactType;
 };
 
+// ################################### Analytics
+
+export const VALID_PRIMITIVE_TYPES = [
+  'str',
+  'int',
+  'float',
+  'date',
+  'bool',
+  'enum',
+  'json',
+] as const;
+
+export type StatsColumnUnknown = {
+  type: 'unknown';
+};
+
+export type StatsColumnPrimitive = {
+  type: (typeof VALID_PRIMITIVE_TYPES)[number];
+};
+
+export type StatsColumnCurrency = {
+  type: 'currency';
+  code: string;
+};
+
+export type StatsColumnType =
+  | StatsColumnUnknown
+  | StatsColumnPrimitive
+  | StatsColumnCurrency;
+
 //################################### DB
 
 export type DBColumn = {
@@ -35,7 +65,11 @@ export type InsertionErroredRow = {
 
 export type RawResults = {
   query: string;
-  rawResults: (QueryExecResult & { page?: number; totalRows?: number })[];
+  rawResults: (QueryExecResult & {
+    columnTypes?: StatsColumnType[];
+    page?: number;
+    totalRows?: number;
+  })[];
 };
 
 // ################################# Structured DDL
@@ -50,6 +84,7 @@ export type DDLColumnBase = {
     table: string;
     column: string;
   };
+  statsColumnType?: StatsColumnType;
 };
 
 export type DDLColumnMeta = {

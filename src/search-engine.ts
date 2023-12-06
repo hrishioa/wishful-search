@@ -1,3 +1,4 @@
+import { addColumnTypes } from './analytics-utils';
 import { generateAutoSearchMessages } from './autosearch';
 import { LLMSearcheableDatabase } from './db';
 import { fixJSON } from './json-utils';
@@ -631,16 +632,19 @@ export class WishfulSearchEngine<ElementType> {
         verbose,
         true,
       ) as RawResults;
-      return results;
+
+      return addColumnTypes(results, this.tables);
     } catch (err: any) {
       if (reflectAndFix) {
-        return (await this.attemptReflection(
+        const fixedResults = (await this.attemptReflection(
           [...messages],
           partialQuery,
           err,
           true,
           verbose,
         )) as RawResults;
+
+        return addColumnTypes(fixedResults, this.tables);
       } else {
         throw err;
       }

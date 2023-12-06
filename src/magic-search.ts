@@ -18,6 +18,18 @@ const facts: PromptFact[] = [
     type: 'analytics',
   },
   {
+    factStr: 'Dont modify original column names from the tables if possible.',
+    type: 'analytics',
+  },
+  // prettier-ignore
+  {
+    factStr:
+`When creating new columns, always use one of the following prefixes:
+- prefix str, int, float, date, bool, enum, or json to the column name, .e.g. intAverage
+- for currencies, instead prefix currencyXXX to the column name, where XXX is the currency code, e.g. currencyUSD`,
+    type: 'analytics',
+  },
+  {
     factStr: 'Try and find the right rows that can help the answer.',
     type: 'search',
   },
