@@ -1,4 +1,4 @@
-import { FactType, LLMCompatibleMessage, PromptFact, QQTurn } from './types';
+import { LLMCompatibleMessage, PromptFact, QQTurn } from './types';
 
 /**
  * This is the primary collection of prompt templates that makes
