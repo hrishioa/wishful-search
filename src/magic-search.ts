@@ -25,8 +25,9 @@ const facts: PromptFact[] = [
   {
     factStr:
 `When creating new columns, always use one of the following prefixes:
-- prefix str, int, float, date, bool, enum, or json to the column name, .e.g. intAverage
-- for currencies, instead prefix currencyXXX to the column name, where XXX is the currency code, e.g. currencyUSD`,
+- for monetary fields, prefix currencyXXX to the column name, where XXX is the currency code, e.g. currencyUSD
+- otherwise prefix str, int, float, date, bool, enum, or json to the column name, .e.g. intAverage
+`,
     type: 'analytics',
   },
   {
