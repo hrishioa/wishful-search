@@ -14,6 +14,10 @@ const facts: PromptFact[] = [
     type: 'search',
   },
   {
+    factStr: 'Dont LIMIT queries.',
+    type: 'analytics',
+  },
+  {
     factStr: 'Try and find the right rows that can help the answer.',
     type: 'search',
   },
