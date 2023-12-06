@@ -12,6 +12,7 @@ export function paginateRawResults(
     return {
       columns: resultSet.columns,
       values: resultSet.values.slice(start, end),
+      rowsPerPage: maxRows,
       page,
       totalRows: resultSet.values.length,
     };
