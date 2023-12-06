@@ -295,13 +295,12 @@ export class WishfulSearchEngine<ElementType> {
       question,
       queryPrefix,
       this.history.filter((turn) => turn.queryPrefix === queryPrefix),
+      complexQuery ? 'analytics' : 'search',
       this.llmConfig.fewShotLearning?.filter(
         (turn) => turn.queryPrefix === queryPrefix,
       ),
       this.llmConfig.enableTodaysDate,
     );
-
-    console.log('Messages - ', JSON.stringify(messages, null, 2));
 
     return messages;
   }
