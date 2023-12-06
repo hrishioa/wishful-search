@@ -66,12 +66,12 @@ ${searchType === 'search' ? `Provide an appropriate SQLite Query to return the k
 'Provide an appropriate SQLite query to return the answer to the user\'s question. Add any fields that would be helpful to explain the result but not too many.'}` ,
   user: (question: string, firstQuestion: boolean) => `${firstQuestion ? HISTORY_RESET_COMMAND: ''}${question}`,
   assistant: (query: string, queryPrefix: string) => `${queryPrefix} ${query}`,
-  reflection: (err: string) => `The query ran into the following issue:
+  reflection: (err: string, queryPrefix: string) => `The query ran into the following issue:
   \"\"\"
   ${err}
   \"\"\"
 
-  Fix and provide only the new query. SQL only, in code blocks.`
+  Fix and provide only the new query. SQL only, in code blocks. The query must start with ${queryPrefix}.`
 }
 
 export function generateLLMMessages(

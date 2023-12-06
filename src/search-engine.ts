@@ -712,7 +712,10 @@ export class WishfulSearchEngine<ElementType> {
     });
     searchMessages.push({
       role: 'user',
-      content: searchPrompt.reflection(err.toString()),
+      content: searchPrompt.reflection(
+        err.toString(),
+        this.getQueryPrefix(complexQuery),
+      ),
     });
 
     const fixedPartialQuery = await this.getQueryFromLLM(
