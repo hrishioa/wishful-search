@@ -4,7 +4,7 @@ export function paginateRawResults(
   results: RawResults['rawResults'],
   maxRows: number = 200,
   page: number = 1,
-) {
+): RawResults['rawResults'] {
   const start = (page - 1) * maxRows;
   const end = Math.min(results.length, start + maxRows);
 
