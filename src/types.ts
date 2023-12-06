@@ -35,7 +35,7 @@ export type InsertionErroredRow = {
 
 export type RawResults = {
   query: string;
-  rawResults: QueryExecResult[];
+  rawResults: (QueryExecResult & { page?: number; totalRows?: number })[];
 };
 
 // ################################# Structured DDL
