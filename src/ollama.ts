@@ -28,7 +28,7 @@ export async function* callOllama(
   });
 
   // Using fetch to initiate a POST request that will return an SSE stream
-  const response = await fetch(`http://localhost:${port}/api/generate`, {
+  const response = await fetch(`http://127.0.0.1:${port}/api/generate`, {
     method: 'POST',
     headers: headers,
     body: requestBody,
