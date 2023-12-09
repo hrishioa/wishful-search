@@ -756,7 +756,7 @@ export class WishfulSearchEngine<ElementType> {
     verbose: boolean = false,
     complexQuery: boolean = false,
   ): Promise<QQTurn[]> {
-    const queryPrefix = this.getQueryPrefix(false);
+    const queryPrefix = this.getQueryPrefix(complexQuery);
 
     if (this.latestIncompleteQuestion)
       throw new Error(
@@ -792,10 +792,7 @@ export class WishfulSearchEngine<ElementType> {
           this.generateSearchMessages(question.question, complexQuery),
         );
 
-        if (verbose)
-          console.log(
-            `Full Query: ${this.getQueryPrefix(complexQuery)} ${partialQuery}`,
-          );
+        if (verbose) console.log(`Full Query: ${queryPrefix} ${partialQuery}`);
 
         const results = this.searchWithPartialQuery(
           partialQuery,
