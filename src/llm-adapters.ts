@@ -150,12 +150,6 @@ function getClaudeAdapter(
             tokens / (endTime[0] + endTime[1] / 1e9),
           );
 
-        for await (const part of completion) {
-          if (process.env.PRINT_WS_INTERNALS === 'yes')
-            process.stdout.write(part.completion || '');
-          fullMessage += part.completion || '';
-        }
-
         return fullMessage || null;
       } catch (err) {
         console.error(`Error retrieving response from model ${params}`);
