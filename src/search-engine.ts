@@ -689,14 +689,14 @@ export class WishfulSearchEngine<ElementType> {
   }
 
   /**
-   * Reflect errors back to the LLM and attempt a fix.
+   * Reflect errors back to the LLM and get a fixed query.
    * @param searchMessages
    * @param partialQuery
    * @param err
    * @param verbose
    * @returns
    */
-  async attemptReflection(
+  async tryAndFixQuery(
     searchMessages: LLMCompatibleMessage[],
     partialQuery: string,
     err: any,
@@ -725,6 +725,32 @@ export class WishfulSearchEngine<ElementType> {
     const fixedPartialQuery = await this.getQueryFromLLM(
       searchMessages,
       complexQuery,
+    );
+
+    return fixedPartialQuery;
+  }
+
+  /**
+   * Reflect errors back to the LLM and attempt a fix.
+   * @param searchMessages
+   * @param partialQuery
+   * @param err
+   * @param verbose
+   * @returns
+   */
+  async attemptReflection(
+    searchMessages: LLMCompatibleMessage[],
+    partialQuery: string,
+    err: any,
+    complexQuery: boolean = false,
+    verbose?: boolean,
+  ) {
+    const fixedPartialQuery = await this.tryAndFixQuery(
+      searchMessages,
+      partialQuery,
+      err,
+      complexQuery,
+      verbose,
     );
 
     const fixedResults = this.searchWithPartialQuery(
@@ -795,15 +821,22 @@ export class WishfulSearchEngine<ElementType> {
 
         if (verbose) console.log(`Full Query: ${queryPrefix} ${partialQuery}`);
 
+        let noResults = false;
+
         const results = this.searchWithPartialQuery(
           partialQuery,
           false,
           complexQuery,
-        ) as ElementType[];
+        );
 
-        if (verbose) console.log(`Got ${results.length} results.`);
+        if (complexQuery && (results as RawResults).rawResults.length === 0)
+          noResults = true;
+        else if (!complexQuery && (results as ElementType[]).length === 0)
+          noResults = true;
 
-        if (!noQuestionsWithZeroResults || results.length) {
+        console.log('No results? ', noResults);
+
+        if (!noQuestionsWithZeroResults || !noResults) {
           fewShotLearningBatch.push({
             queryPrefix,
             question: `${
