@@ -55,6 +55,9 @@ export function getMistralAdapter(params?: CommonLLMParameters) {
       if (process.env.PRINT_WS_INTERNALS === 'yes')
         console.log('Streaming response: ');
 
+      const startTime = process.hrtime();
+      let tokens = 0;
+
       for await (const token of response) {
         if (token.type === 'completeMessage') {
           if (process.env.PRINT_WS_INTERNALS === 'yes')
@@ -62,10 +65,17 @@ export function getMistralAdapter(params?: CommonLLMParameters) {
               token.message.split(stopSequences[0]!)[0] ||
                 '<NO TOKEN RECEIVED>',
             );
-
+          tokens += token.message.length;
           return token.message.split(stopSequences[0]!)[0] || null;
         }
       }
+
+      const endTime = process.hrtime(startTime);
+      if (process.env.PRINT_WS_INTERNALS === 'yes')
+        console.log(
+          '\nCharacters per second: ',
+          tokens / (endTime[0] + endTime[1] / 1e9),
+        );
 
       return null;
     },
