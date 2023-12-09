@@ -140,13 +140,13 @@ function getClaudeAdapter(
           if (process.env.PRINT_WS_INTERNALS === 'yes')
             process.stdout.write(part.completion || '');
           fullMessage += part.completion || '';
-          if (part.completion) tokens += 1;
+          if (part.completion) tokens += part.completion.length;
         }
 
         const endTime = process.hrtime(startTime);
         if (process.env.PRINT_WS_INTERNALS === 'yes')
           console.log(
-            '\nTokens per second: ',
+            '\nCharacters per second: ',
             tokens / (endTime[0] + endTime[1] / 1e9),
           );
 
@@ -232,13 +232,14 @@ export function getLMStudioAdapter(
           if (process.env.PRINT_WS_INTERNALS === 'yes')
             process.stdout.write(part.choices[0]?.delta?.content || '');
           fullMessage += part.choices[0]?.delta?.content || '';
-          if (part.choices[0]?.delta?.content) tokens += 1;
+          if (part.choices[0]?.delta?.content)
+            tokens += part.choices[0]?.delta?.content.length;
         }
 
         const endTime = process.hrtime(startTime);
         if (process.env.PRINT_WS_INTERNALS === 'yes')
           console.log(
-            '\nTokens per second: ',
+            '\nCharacters per second: ',
             tokens / (endTime[0] + endTime[1] / 1e9),
           );
 
@@ -310,13 +311,14 @@ function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
           if (process.env.PRINT_WS_INTERNALS === 'yes')
             process.stdout.write(part.choices[0]?.delta?.content || '');
           fullMessage += part.choices[0]?.delta?.content || '';
-          if (part.choices[0]?.delta?.content) tokens += 1;
+          if (part.choices[0]?.delta?.content)
+            tokens += part.choices[0]?.delta?.content.length;
         }
 
         const endTime = process.hrtime(startTime);
         if (process.env.PRINT_WS_INTERNALS === 'yes')
           console.log(
-            '\nTokens per second: ',
+            '\nCharacters per second: ',
             tokens / (endTime[0] + endTime[1] / 1e9),
           );
 
