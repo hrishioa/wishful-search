@@ -133,6 +133,23 @@ function getClaudeAdapter(
         if (process.env.PRINT_WS_INTERNALS === 'yes')
           console.log('Streaming response: ');
 
+        const startTime = process.hrtime();
+        let tokens = 0;
+
+        for await (const part of completion) {
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            process.stdout.write(part.completion || '');
+          fullMessage += part.completion || '';
+          if (part.completion) tokens += 1;
+        }
+
+        const endTime = process.hrtime(startTime);
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            '\nTokens per second: ',
+            tokens / (endTime[0] + endTime[1] / 1e9),
+          );
+
         for await (const part of completion) {
           if (process.env.PRINT_WS_INTERNALS === 'yes')
             process.stdout.write(part.completion || '');
@@ -208,11 +225,22 @@ export function getLMStudioAdapter(
         if (process.env.PRINT_WS_INTERNALS === 'yes')
           console.log('Streaming response: ');
 
+        const startTime = process.hrtime();
+        let tokens = 0;
+
         for await (const part of completion) {
           if (process.env.PRINT_WS_INTERNALS === 'yes')
             process.stdout.write(part.choices[0]?.delta?.content || '');
           fullMessage += part.choices[0]?.delta?.content || '';
+          if (part.choices[0]?.delta?.content) tokens += 1;
         }
+
+        const endTime = process.hrtime(startTime);
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            '\nTokens per second: ',
+            tokens / (endTime[0] + endTime[1] / 1e9),
+          );
 
         return fullMessage || null;
       } catch (err) {
@@ -275,11 +303,22 @@ function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
         if (process.env.PRINT_WS_INTERNALS === 'yes')
           console.log('Streaming response: ');
 
+        const startTime = process.hrtime();
+        let tokens = 0;
+
         for await (const part of completion) {
           if (process.env.PRINT_WS_INTERNALS === 'yes')
             process.stdout.write(part.choices[0]?.delta?.content || '');
           fullMessage += part.choices[0]?.delta?.content || '';
+          if (part.choices[0]?.delta?.content) tokens += 1;
         }
+
+        const endTime = process.hrtime(startTime);
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            '\nTokens per second: ',
+            tokens / (endTime[0] + endTime[1] / 1e9),
+          );
 
         return fullMessage || null;
       } catch (err) {
