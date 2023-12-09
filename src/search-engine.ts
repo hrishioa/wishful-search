@@ -754,6 +754,7 @@ export class WishfulSearchEngine<ElementType> {
     noQuestionsWithZeroResults: boolean = false,
     errorOnInvalidQuestions: boolean = false,
     verbose: boolean = false,
+    complexQuery: boolean = false,
   ): Promise<QQTurn[]> {
     const queryPrefix = this.getQueryPrefix(false);
 
@@ -788,16 +789,18 @@ export class WishfulSearchEngine<ElementType> {
         if (question.clearHistory) this.history = [];
 
         const partialQuery = await this.getQueryFromLLM(
-          this.generateSearchMessages(question.question),
+          this.generateSearchMessages(question.question, complexQuery),
         );
 
         if (verbose)
           console.log(
-            `Full Query: ${this.getQueryPrefix(false)} ${partialQuery}`,
+            `Full Query: ${this.getQueryPrefix(complexQuery)} ${partialQuery}`,
           );
 
         const results = this.searchWithPartialQuery(
           partialQuery,
+          false,
+          complexQuery,
         ) as ElementType[];
 
         if (verbose) console.log(`Got ${results.length} results.`);
