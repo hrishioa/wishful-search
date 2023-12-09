@@ -790,6 +790,7 @@ export class WishfulSearchEngine<ElementType> {
 
         const partialQuery = await this.getQueryFromLLM(
           this.generateSearchMessages(question.question, complexQuery),
+          complexQuery,
         );
 
         if (verbose) console.log(`Full Query: ${queryPrefix} ${partialQuery}`);
