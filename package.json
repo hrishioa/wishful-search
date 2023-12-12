@@ -1,7 +1,7 @@
 {
   "author": "Hrishi Olickel <hrishi[at]grey-wing.com>",
   "name": "wishful-search",
-  "version": "0.3.10",
+  "version": "0.3.11",
   "license": "Apache-2.0",
   "main": "dist/node/index.js",
   "module": "dist/node/index.js",
@@ -9,6 +9,7 @@
   "browser": "release/wishful-search.js",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.8.1",
+    "api": "^6.1.1",
     "openai": "^4.14.2",
     "sql.js": "^1.8.0"
   },

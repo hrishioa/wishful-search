@@ -31,5 +31,5 @@
     // "noUnusedParameters": true // Report errors on unused parameters in functions
   },
   "include": ["./**/*.ts"],
-  "exclude": ["node_modules/**/*", "tests/**/*"]
+  "exclude": ["node_modules/**/*", "tests/**/*", "custom-tests/**/*"]
 }

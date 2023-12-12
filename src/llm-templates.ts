@@ -6,7 +6,7 @@ export const LLMTemplateFunctions = {
   'yarn-mistral': generateYarnPrompt,
 };
 
-function generateMistralPrompt(messages: LLMCompatibleMessage[]): {
+export function generateMistralPrompt(messages: LLMCompatibleMessage[]): {
   prompt: string;
   stopSequences: string[];
 } {

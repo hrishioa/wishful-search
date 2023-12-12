@@ -17,8 +17,13 @@ tmp
 
 lib
 
+custom-tests
+
 # Build
 public/css/main.css
+
+tests/**/*.json
+tests/**/*.md
 
 tests/**/analysis*
 
