@@ -26,6 +26,7 @@ tests/**/*.json
 tests/**/*.md
 
 tests/**/analysis*
+tests/**/flights*
 
 # Coverage reports
 coverage
