@@ -8,8 +8,87 @@ import {
 } from './types';
 import type OpenAI from 'openai';
 import type Anthropic from '@anthropic-ai/sdk';
+import { TogetherAISupportedModel, callTogetherAI } from './togetherai';
 
-export function getMistralAdapter(params?: CommonLLMParameters) {
+export function getTogetherAIAdapter(
+  params?: CommonLLMParameters & { model: TogetherAISupportedModel },
+) {
+  const DEFAULT_MIXTRAL_PARAMS = {
+    model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+    temperature: 0.5,
+    max_tokens: 10000,
+  };
+
+  const DEFAULT_MIXTRAL_LLM_CONFIG: LLMConfig = {
+    enableTodaysDate: true,
+    fewShotLearning: [],
+  };
+
+  const adapter: {
+    llmConfig: LLMConfig;
+    callLLM: LLMCallFunc;
+  } = {
+    llmConfig: DEFAULT_MIXTRAL_LLM_CONFIG,
+    callLLM: async function callLLM(
+      messages: LLMCompatibleMessage[],
+      queryPrefix?: string,
+    ) {
+      if (queryPrefix && messages[messages.length - 1]!.role !== 'assistant')
+        messages.push({
+          role: 'assistant',
+          content: queryPrefix,
+        });
+
+      if (process.env.PRINT_WS_INTERNALS === 'yes')
+        console.log(
+          `Asking ${
+            params?.model ?? DEFAULT_MIXTRAL_PARAMS.model
+          } on TogetherAI...`,
+        );
+
+      const response = await callTogetherAI(
+        messages,
+        params?.model ??
+          (DEFAULT_MIXTRAL_PARAMS.model as TogetherAISupportedModel),
+        params?.temperature ?? (DEFAULT_MIXTRAL_PARAMS.temperature || 0),
+        params?.max_tokens ?? (DEFAULT_MIXTRAL_PARAMS.max_tokens || 10000),
+      );
+
+      if (process.env.PRINT_WS_INTERNALS === 'yes')
+        console.log('Streaming response: ');
+
+      const startTime = process.hrtime();
+      let tokens = 0;
+
+      for await (const token of response) {
+        if (token.type === 'token') {
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            process.stdout.write(token.token);
+          tokens += token.token.length;
+        }
+        if (token.type === 'error') {
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.error(token.error);
+        }
+        if (token.type === 'completeMessage') {
+          const endTime = process.hrtime(startTime);
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.log(
+              '\nCharacters per second: ',
+              tokens / (endTime[0] + endTime[1] / 1e9),
+            );
+          return token.message;
+        }
+      }
+
+      return null;
+    },
+  };
+
+  return adapter;
+}
+
+export function getOllamaAdapter(params?: CommonLLMParameters) {
   const DEFAULT_MISTRAL_PARAMS = {
     model: 'mistral',
     temperature: 0,
@@ -341,8 +420,9 @@ function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
 const adapters = {
   getOpenAIAdapter,
   getClaudeAdapter,
-  getMistralAdapter,
+  getOllamaAdapter,
   getLMStudioAdapter,
+  getTogetherAIAdapter,
 };
 
 export default adapters;
