@@ -471,7 +471,8 @@ export class WishfulSearchEngine<ElementType> {
         console.error(
           'Error in query ',
           partialQuery,
-          ' - reflecting and fixing...',
+          ' - reflecting and fixing error ',
+          err,
         );
 
       results = (await this.attemptReflection(
@@ -707,7 +708,8 @@ export class WishfulSearchEngine<ElementType> {
       console.error(
         'Error in query ',
         partialQuery,
-        ' - reflecting and fixing...',
+        ' - reflecting and fixing error ',
+        err,
       );
 
     searchMessages.push({

@@ -78,8 +78,11 @@ export async function* callTogetherAI(
       const chunk = new TextDecoder('utf-8').decode(value);
       const lines = chunk.split('\n');
 
-      for (const line of lines) {
+      let incompleteLine = '';
+
+      for (let line of lines) {
         try {
+          line = incompleteLine + line;
           if (line.includes('[DONE]')) break;
           if (line.startsWith('data: ')) {
             const data = JSON.parse(line.slice(5));
@@ -91,17 +94,27 @@ export async function* callTogetherAI(
             ) {
               yield {
                 type: 'token',
-                token: data.choices[0].text,
+                token: data.choices[0].text.replace('\\_', '_'),
               };
-              fullMessage += data.choices[0].text;
+              fullMessage += data.choices[0].text.replace('\\_', '_');
             }
           }
         } catch (err) {
-          console.error('Error parsing message - ', line, err);
-          yield {
-            type: 'error',
-            error: (err as Error).message,
-          };
+          if (incompleteLine) {
+            console.error(
+              'Error parsing message - ',
+              line,
+              '\n error is ',
+              err,
+            );
+
+            yield {
+              type: 'error',
+              error: (err as Error).message,
+            };
+          } else {
+            incompleteLine = line;
+          }
         }
       }
     }

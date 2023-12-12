@@ -18,7 +18,7 @@ const facts: PromptFact[] = [
     type: 'analytics',
   },
   {
-    factStr: 'Dont modify original column names from the tables if possible.',
+    factStr: 'Keep original column names from the DDL the same.',
     type: 'analytics',
   },
   // prettier-ignore
