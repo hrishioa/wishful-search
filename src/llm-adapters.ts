@@ -8,6 +8,7 @@ import {
 } from './types';
 import type OpenAI from 'openai';
 import type Anthropic from '@anthropic-ai/sdk';
+import type { OpenAIClient } from '@azure/openai';
 import { TogetherAISupportedModel, callTogetherAI } from './togetherai';
 
 export function getTogetherAIAdapter(
@@ -417,12 +418,94 @@ function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
   return adapter;
 }
 
+function getAzureOpenAIAdapter(
+  azureOpenAI: OpenAIClient,
+  params: CommonLLMParameters,
+) {
+  const DEFAULT_OPENAI_LLM_CONFIG: LLMConfig = {
+    enableTodaysDate: true,
+    fewShotLearning: [],
+  };
+
+  const adapter: {
+    llmConfig: LLMConfig;
+    callLLM: LLMCallFunc;
+  } = {
+    llmConfig: DEFAULT_OPENAI_LLM_CONFIG,
+    callLLM: async function callLLM(
+      messages: LLMCompatibleMessage[],
+      _?: string,
+    ) {
+      if (messages.length < 1 || !messages[messages.length - 1]) return null;
+
+      if (messages[messages.length - 1]!.role === 'assistant') {
+        const lastAssistantMessage = messages[messages.length - 1]!.content;
+        messages = [...messages.slice(0, messages.length - 1)];
+        messages[messages.length - 1]!.content = `${
+          messages[messages.length - 1]!.content
+        }\n\n${lastAssistantMessage}`;
+      }
+
+      try {
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(`Asking ${params.model} (Azure OpenAI)...`);
+
+        const streamingResults = await azureOpenAI.streamChatCompletions(
+          params.model,
+          messages,
+          {
+            maxTokens: params.max_tokens,
+            temperature: params.temperature,
+          },
+        );
+
+        let fullMessage = '';
+
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log('Streaming response: ');
+
+        const startTime = process.hrtime();
+        let tokens = 0;
+
+        for await (const event of streamingResults) {
+          for (const choice of event.choices) {
+            const chunk = choice.delta?.content || '';
+
+            if (process.env.PRINT_WS_INTERNALS === 'yes')
+              process.stdout.write(chunk);
+
+            fullMessage += chunk;
+
+            if (chunk) tokens += chunk.length;
+          }
+        }
+
+        const endTime = process.hrtime(startTime);
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            '\nCharacters per second: ',
+            tokens / (endTime[0] + endTime[1] / 1e9),
+          );
+
+        return fullMessage || null;
+      } catch (err) {
+        console.error(`Error retrieving response from model ${params}`);
+        console.error(err);
+        return null;
+      }
+    },
+  };
+
+  return adapter;
+}
+
 const adapters = {
   getOpenAIAdapter,
   getClaudeAdapter,
   getOllamaAdapter,
   getLMStudioAdapter,
   getTogetherAIAdapter,
+  getAzureOpenAIAdapter,
 };
 
 export default adapters;
