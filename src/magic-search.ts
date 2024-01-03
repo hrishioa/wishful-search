@@ -97,7 +97,7 @@ export function generateLLMMessages(
   enableTodaysDate?: boolean,
 ): LLMCompatibleMessage[] {
   const dateStr = enableTodaysDate
-    ? new Date().toLocaleDateString()
+    ? new Date().toISOString().split('T')[0]
     : undefined;
 
   const messages: LLMCompatibleMessage[] = [];
