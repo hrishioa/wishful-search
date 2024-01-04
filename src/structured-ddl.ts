@@ -35,7 +35,12 @@ function generateComment(column: DDLColumn) {
   let examples = '';
 
   if (column.dynamicEnumData?.type === 'EXAMPLES') {
-    examples = `e.g. ${column.dynamicEnumData.examples.join(', ')}`;
+    examples = `e.g.${
+      (column.dynamicEnumSettings?.type === 'EXHAUSTIVE' &&
+        !column.dynamicEnumSettings?.topK &&
+        ' (Exhaustive)') ||
+      ''
+    } ${column.dynamicEnumData.examples.join(', ')}`;
   } else if (column.dynamicEnumData?.type === 'MIN_MAX') {
     examples = `between ${column.dynamicEnumData.min} and ${column.dynamicEnumData.max}`;
     if (column.dynamicEnumData.exceptions.length) {
