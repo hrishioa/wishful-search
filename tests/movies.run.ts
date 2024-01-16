@@ -1,5 +1,11 @@
 import { WishfulSearchEngine, LLMAdapters } from '../src/index';
-import { MOVIES_DDL, MOVIES_FEW_SHOT, Movie, getMovies, movieToRows } from './movies-data';
+import {
+  MOVIES_DDL,
+  MOVIES_FEW_SHOT,
+  Movie,
+  getMovies,
+  movieToRows,
+} from './movies-data';
 import { question } from './test-utils';
 
 import OpenAI from 'openai';
@@ -9,7 +15,7 @@ const openai = new OpenAI();
 // import Anthropic from '@anthropic-ai/sdk';
 // const anthropic = new Anthropic();
 
-(async function() {
+(async function () {
   console.log('Loading...');
 
   // const GPT4LLMAdapter = LLMAdapters.getOpenAIAdapter(openai, {
@@ -76,9 +82,9 @@ const openai = new OpenAI();
   //   question: 'comedy ones please.'
   // }], true, false, true);
 
-  while(true) {
+  while (true) {
     const q = await question('\n\nWhat are you looking for? ');
-    const result = await wishfulSearchEngine.search(q, true, true) as Movie[];
+    const result = (await wishfulSearchEngine.search(q, true, true)) as Movie[];
     console.log('\n\nRetrieved ', result.length, 'results.');
     console.log('Top result: ', result[0]);
   }

@@ -295,10 +295,10 @@ export class WishfulSearchEngine<ElementType> {
       generateSQLDDL(this.tables, true),
       question,
       queryPrefix,
-      this.history.filter((turn) => turn.queryPrefix === queryPrefix),
+      this.history.filter((turn) => complexQuery && !!turn.complexQuery),
       complexQuery ? 'analytics' : 'search',
       this.llmConfig.fewShotLearning?.filter(
-        (turn) => turn.queryPrefix === queryPrefix,
+        (turn) => complexQuery && !!turn.complexQuery,
       ),
       this.llmConfig.enableTodaysDate,
     );
@@ -324,7 +324,7 @@ export class WishfulSearchEngine<ElementType> {
   ): RawResults | ElementType[] {
     if (this.saveHistory && this.latestIncompleteQuestion)
       this.history.push({
-        queryPrefix: this.getQueryPrefix(complexQuery),
+        complexQuery,
         question: this.latestIncompleteQuestion,
         partialQuery,
       });
@@ -840,7 +840,7 @@ export class WishfulSearchEngine<ElementType> {
 
         if (!noQuestionsWithZeroResults || !noResults) {
           fewShotLearningBatch.push({
-            queryPrefix,
+            complexQuery,
             question: `${
               question.clearHistory ? HISTORY_RESET_COMMAND + ' ' : ''
             }${question.question}`,
