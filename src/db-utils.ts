@@ -23,3 +23,7 @@ ORDER BY frequency DESC;`
 
   return enums;
 }
+
+export default {
+  getEnumsForColumnFromSqlite,
+};

@@ -61,14 +61,12 @@ ${ddlExplanation}`
 // prettier-ignore
 export const autoAnalyzePrompts = {
   generateTypespec: {
-    system: (inputObj: any, name?: string, inputObjExample2?: any) =>
-`EXAMPLE_JSON${name ? ` (Potential name ${name})` : ''}
+    system: (inputObj: any, name?: string) =>
+`EXAMPLE_JSON${name ? ` (Potential name ${name})` : ''} :
 \`\`\`
-${JSON.stringify(inputObj, null, 2)}${inputObjExample2 ? `
+${JSON.stringify(inputObj, null, 2)}
 \`\`\`
-EXAMPLE 2:
-${JSON.stringify(inputObjExample2, null, 2)}` : ''}
-\`\`\``,
+`,
     user: `Outline a typespec in typescript for the EXAMPLE_JSON provided. Add comments to each field with a description of what this field contains, and an example. Use singular type names unless an array. Use type instead of interface.`
   },
   tableStructure: {

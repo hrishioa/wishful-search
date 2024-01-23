@@ -25,7 +25,7 @@ export class WishfulBaseEngine {
       sortEnumsByFrequency: true,
     },
   ) {
-    this.baseQueryPrefix = engineConfig.baseQueryPrefix || 'SELECT ';
+    this.baseQueryPrefix = this.engineConfig.baseQueryPrefix || 'SELECT ';
   }
 
   private getCleanQueryFromResponse(
