@@ -42,7 +42,7 @@ export type StatsColumnPrimitive = {
 
 export type StatsColumnDate = {
   type: 'date';
-  format: 'OLE_AUTOMATION_EXCEL' | string; // provide a date format for date-fns to parse. Use dd and yyyy instead of DD and YYYY.
+  format?: 'OLE_AUTOMATION_EXCEL' | string; // provide a date format for date-fns to parse. Use dd and yyyy instead of DD and YYYY.
 };
 
 export type StatsColumnCurrency = {
