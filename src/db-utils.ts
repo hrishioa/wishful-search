@@ -1,5 +1,6 @@
 import { Database } from 'sql.js';
 import { generateSQLDDL } from './structured-ddl';
+import { addColumnTypes } from './analytics-utils';
 
 export function getEnumsForColumnFromSqlite(
   db: Database,
@@ -27,5 +28,6 @@ ORDER BY frequency DESC;`
 
 export default {
   getEnumsForColumnFromSqlite,
+  addColumnTypes,
   generateSQLDDL,
 };
