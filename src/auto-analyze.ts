@@ -59,14 +59,17 @@ ${ddlExplanation}`
 `
 
 // prettier-ignore
-const prompts = {
+export const autoAnalyzePrompts = {
   generateTypespec: {
-    system: (inputObj: any) =>
-`EXAMPLE_JSON:
+    system: (inputObj: any, name?: string, inputObjExample2?: any) =>
+`EXAMPLE_JSON${name ? ` (Potential name ${name})` : ''}
 \`\`\`
-${JSON.stringify(inputObj, null, 2)}
+${JSON.stringify(inputObj, null, 2)}${inputObjExample2 ? `
+\`\`\`
+EXAMPLE 2:
+${JSON.stringify(inputObjExample2, null, 2)}` : ''}
 \`\`\``,
-    user: `Outline a typespec in typescript for the EXAMPLE provided.`
+    user: `Outline a typespec in typescript for the EXAMPLE_JSON provided. Add comments to each field with a description of what this field contains, and an example. Use singular type names unless an array. Use type instead of interface.`
   },
   tableStructure: {
     user:
@@ -185,11 +188,11 @@ export async function autoAnalyzeObject(
   const messages: LLMCompatibleMessage[] = [
     {
       role: 'system',
-      content: prompts.generateTypespec.system(inputObj),
+      content: autoAnalyzePrompts.generateTypespec.system(inputObj),
     },
     {
       role: 'user',
-      content: prompts.generateTypespec.user,
+      content: autoAnalyzePrompts.generateTypespec.user,
     },
   ];
 
@@ -221,7 +224,7 @@ export async function autoAnalyzeObject(
 
     messages.push({
       role: 'user',
-      content: prompts.tableStructure.user,
+      content: autoAnalyzePrompts.tableStructure.user,
     });
 
     tableStructure = await callLLM(messages);
@@ -235,7 +238,7 @@ export async function autoAnalyzeObject(
     });
     messages.push({
       role: 'user',
-      content: prompts.generateDDL.user,
+      content: autoAnalyzePrompts.generateDDL.user,
     });
 
     console.log('Generating DDL...');
@@ -256,11 +259,11 @@ export async function autoAnalyzeObject(
     const structuredDDLMessages: LLMCompatibleMessage[] = [
       {
         role: 'system',
-        content: prompts.structureDDL.system(ddl),
+        content: autoAnalyzePrompts.structureDDL.system(ddl),
       },
       {
         role: 'user',
-        content: prompts.structureDDL.user,
+        content: autoAnalyzePrompts.structureDDL.user,
       },
     ];
 
@@ -283,11 +286,11 @@ export async function autoAnalyzeObject(
     const objectToRowMessages: LLMCompatibleMessage[] = [
       {
         role: 'system',
-        content: prompts.objectToRow.system(typespec, ddl),
+        content: autoAnalyzePrompts.objectToRow.system(typespec, ddl),
       },
       {
         role: 'user',
-        content: prompts.objectToRow.user,
+        content: autoAnalyzePrompts.objectToRow.user,
       },
     ];
 

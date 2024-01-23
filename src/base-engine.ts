@@ -1,13 +1,6 @@
-import { LLMSearcheableDatabase } from './db';
 import { generateLLMMessages, searchPrompt } from './magic-search';
 import { generateSQLDDL } from './structured-ddl';
-import {
-  DDLTable,
-  LLMCallFunc,
-  LLMCompatibleMessage,
-  LLMConfig,
-  QQTurn,
-} from './types';
+import { DDLTable, LLMCallFunc, LLMCompatibleMessage, QQTurn } from './types';
 
 export type LLMQuery = {
   queryPrefix: string;

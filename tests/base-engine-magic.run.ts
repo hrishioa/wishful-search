@@ -5,7 +5,7 @@ import fs from 'fs';
 import { LLMAdapters } from '../src/index';
 import { question } from './test-utils';
 import { MTGTables, MagicTheGatheringCard } from './magic-data';
-import { WishfulBaseEngine } from '../src/analytics-engine';
+import { WishfulBaseEngine } from '../src/base-engine';
 
 const openai = new OpenAI();
 

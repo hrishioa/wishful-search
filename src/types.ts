@@ -27,7 +27,6 @@ export const VALID_PRIMITIVE_TYPES = [
   'str',
   'int',
   'float',
-  'date',
   'bool',
   'enum',
   'json',
@@ -41,6 +40,11 @@ export type StatsColumnPrimitive = {
   type: (typeof VALID_PRIMITIVE_TYPES)[number];
 };
 
+export type StatsColumnDate = {
+  type: 'date';
+  format: 'OLE_AUTOMATION_EXCEL' | string; // provide a date format for date-fns to parse. Use dd and yyyy instead of DD and YYYY.
+};
+
 export type StatsColumnCurrency = {
   type: 'currency';
   code: string;
@@ -49,6 +53,7 @@ export type StatsColumnCurrency = {
 export type StatsColumnType =
   | StatsColumnUnknown
   | StatsColumnPrimitive
+  | StatsColumnDate
   | StatsColumnCurrency;
 
 //################################### DB
@@ -128,6 +133,7 @@ export type CommonLLMParameters = {
   model: string;
   temperature?: number;
   max_tokens?: number;
+  response_format?: { type: 'json_object' };
 };
 
 export type LLMConfig = {
