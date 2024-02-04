@@ -22,8 +22,6 @@ export function updateDDLWithDynamicEnums(
 
       let enumSettings = column.dynamicEnumSettings!;
 
-      let dateParseFailed = false;
-
       if (enumSettings.type === 'MIN_MAX' && enumSettings.format === 'DATE') {
         const numericEnums = enums
           .map((enumValue) => Date.parse(enumValue))
@@ -45,7 +43,6 @@ export function updateDDLWithDynamicEnums(
             err,
           );
           console.error('Enums: ', numericEnums);
-          dateParseFailed = true;
           column.dynamicEnumSettings = {
             type: 'EXHAUSTIVE_CHAR_LIMITED',
             charLimit: 1000,
