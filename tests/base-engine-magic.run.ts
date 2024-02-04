@@ -95,7 +95,7 @@ const ClaudeLLMAdapter = LLMAdapters.getClaudeAdapter(
 
     const messages = baseEngine.generatePrompt(q);
 
-    console.log('Messages: ', messages);
+    console.log('Messages: ', JSON.stringify(messages));
 
     const query = await baseEngine.generateQuery(messages);
 

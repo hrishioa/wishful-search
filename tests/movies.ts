@@ -60,5 +60,10 @@ export async function loadMovies() {
     })
     .filter((record) => !!record);
 
+  fs.writeFileSync(
+    './tests/data/movies_metadata.json',
+    JSON.stringify(parsedRecords, null, 2),
+  );
+
   return parsedRecords;
 }
