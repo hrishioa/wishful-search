@@ -14,3 +14,6 @@ yarn.lock
 tests/
 
 node_modules
+
+custom-tests
+assets
