@@ -418,6 +418,125 @@ function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
   return adapter;
 }
 
+export function getAzureMistralAdapter(
+  azureEndpoint: string,
+  azureKey: string,
+  params: CommonLLMParameters,
+) {
+  const DEFAULT_OPENAI_LLM_CONFIG: LLMConfig = {
+    enableTodaysDate: true,
+  };
+
+  const adapter: {
+    llmConfig: LLMConfig;
+    callLLM: LLMCallFunc;
+  } = {
+    llmConfig: DEFAULT_OPENAI_LLM_CONFIG,
+    callLLM: async function callLLM(
+      messages: LLMCompatibleMessage[],
+      _?: string,
+    ) {
+      if (messages.length < 1 || !messages[messages.length - 1]) return null;
+
+      if (messages[messages.length - 1]!.role === 'assistant') {
+        const lastAssistantMessage = messages[messages.length - 1]!.content;
+        messages = [...messages.slice(0, messages.length - 1)];
+        messages[messages.length - 1]!.content = `${
+          messages[messages.length - 1]!.content
+        }\n\n${lastAssistantMessage}`;
+      }
+
+      try {
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(`Asking ${params.model} (Mistral Large Azure)...`);
+
+        const response = await fetch(`${azureEndpoint}/v1/chat/completions`, {
+          method: 'post',
+          headers: {
+            'User-Agent': 'mistral-client-js/0.0.3',
+            Accept: 'text/event-stream',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${azureKey}`,
+          },
+          body: JSON.stringify({
+            model: params.model,
+            temperature: params.temperature || 0.1,
+            messages,
+            stream: true,
+          }),
+        });
+
+        let fullMessage = '';
+
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log('Streaming response: ');
+
+        const startTime = process.hrtime();
+        let tokens = 0;
+
+        if (!response.body)
+          throw new Error('No response body from Mistral Large Azure');
+
+        let buffer = '';
+        const decoder = new TextDecoder();
+
+        const reader = response.body.getReader();
+        try {
+          while (true) {
+            // Read from the stream
+            const { done, value } = await reader.read();
+            // Exit if we're done
+            if (done) break;
+            // Else yield the chunk
+            buffer += decoder.decode(value, { stream: true });
+
+            let firstNewline;
+            while ((firstNewline = buffer.indexOf('\n')) !== -1) {
+              const chunkLine = buffer.substring(0, firstNewline);
+              buffer = buffer.substring(firstNewline + 1);
+              if (chunkLine.startsWith('data:')) {
+                const json = chunkLine.substring(6).trim();
+                if (json !== '[DONE]') {
+                  const chunk = JSON.parse(json);
+
+                  if (chunk && chunk.choices && chunk.choices.length) {
+                    chunk.choices.forEach((choice: any) => {
+                      if (choice.delta.content !== undefined) {
+                        const streamText = choice.delta.content;
+                        fullMessage += streamText;
+                        tokens += streamText.length;
+                        if (process.env.PRINT_WS_INTERNALS === 'yes')
+                          process.stdout.write(streamText);
+                      }
+                    });
+                  }
+                }
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+
+        const endTime = process.hrtime(startTime);
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            '\nCharacters per second: ',
+            tokens / (endTime[0] + endTime[1] / 1e9),
+          );
+
+        return fullMessage.replace(/\\_/g, '_') || null;
+      } catch (err) {
+        console.error(`Error retrieving response from model ${params}`);
+        console.error(err);
+        return null;
+      }
+    },
+  };
+
+  return adapter;
+}
+
 function getAzureOpenAIAdapter(
   azureOpenAI: OpenAIClient,
   params: CommonLLMParameters,
@@ -506,6 +625,7 @@ const adapters = {
   getLMStudioAdapter,
   getTogetherAIAdapter,
   getAzureOpenAIAdapter,
+  getAzureMistralAdapter,
 };
 
 export default adapters;
