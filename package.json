@@ -10,6 +10,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.8.1",
     "@azure/openai": "^1.0.0-beta.9",
+    "@mistralai/mistralai": "^0.1.3",
     "api": "^6.1.1",
     "openai": "^4.24.7",
     "sql.js": "^1.8.0"

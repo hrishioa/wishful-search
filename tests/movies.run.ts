@@ -7,6 +7,7 @@ import {
   movieToRows,
 } from './movies-data';
 import { question } from './test-utils';
+import MistralClient from '@mistralai/mistralai';
 
 import OpenAI from 'openai';
 const openai = new OpenAI();
@@ -17,6 +18,16 @@ const openai = new OpenAI();
 
 (async function () {
   console.log('Loading...');
+
+  // const MistralClient = (await import('@mistralai/mistralai')).default;
+
+  const mistralClient = new MistralClient(
+    process.env.AZURE_MISTRAL_API_KEY,
+    process.env.AZURE_MISTRAL_API_URL,
+  );
+  const MistralAdapter = LLMAdapters.getMistralAIAdapter(mistralClient, {
+    model: 'Mistral-large-fsmuy',
+  });
 
   // const GPT4LLMAdapter = LLMAdapters.getOpenAIAdapter(openai, {
   //   model: 'gpt-4',
@@ -51,7 +62,7 @@ const openai = new OpenAI();
       enableTodaysDate: true,
       fewShotLearning: MOVIES_FEW_SHOT,
     },
-    GPT3LLMAdapter.callLLM,
+    MistralAdapter.callLLM,
     (movie: Movie) => movie.id,
     true,
     true,
