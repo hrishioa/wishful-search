@@ -27,12 +27,28 @@ const openai = new OpenAI();
   });
 
   // Uncomment to use either Claude model
-  // const Claude2LLMAdapter = LLMAdapters.getClaudeAdapter(Anthropic.HUMAN_PROMPT, Anthropic.AI_PROMPT, anthropic, {
-  //   model: 'claude-2'
-  // })
-  // const Claude1LLMAdapter = LLMAdapters.getClaudeAdapter(Anthropic.HUMAN_PROMPT, Anthropic.AI_PROMPT, anthropic, {
-  //   model: 'claude-instant-v1'
-  // })
+  // const Claude2LLMAdapter = LLMAdapters.getClaudeLegacyAdapter(
+  //   Anthropic.HUMAN_PROMPT,
+  //   Anthropic.AI_PROMPT,
+  //   anthropic,
+  //   {
+  //     model: 'claude-2',
+  //   },
+  // );
+  // const Claude3OpusLLMAdapter = LLMAdapters.getClaudeAdapter(anthropic, {
+  //   model: 'claude-3-opus-20240229',
+  // });
+  // const Claude3SonnetLLMAdapter = LLMAdapters.getClaudeAdapter(anthropic, {
+  //   model: 'claude-3-sonnet-20240229',
+  // });
+  // const Claude2LLMAdapter = LLMAdapters.getClaudeLegacyAdapter(
+  //   Anthropic.HUMAN_PROMPT,
+  //   Anthropic.AI_PROMPT,
+  //   anthropic,
+  //   {
+  //     model: 'claude-instant-v1',
+  //   },
+  // );
 
   // Uncomment to use Mistral - make sure Ollama is running and the api port is default
   // const MistralLLMAdapter = LLMAdapters.getMistralAdapter({

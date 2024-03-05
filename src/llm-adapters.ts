@@ -8,6 +8,7 @@ import {
 } from './types';
 import type OpenAI from 'openai';
 import type Anthropic from '@anthropic-ai/sdk';
+import type { MessageParam } from '@anthropic-ai/sdk/resources';
 import type { OpenAIClient } from '@azure/openai';
 import { TogetherAISupportedModel, callTogetherAI } from './togetherai';
 
@@ -164,7 +165,7 @@ export function getOllamaAdapter(params?: CommonLLMParameters) {
   return adapter;
 }
 
-function getClaudeAdapter(
+function getClaudeLegacyAdapter(
   humanPromptTag: string,
   assistantPromptTag: string,
   anthropic: Anthropic,
@@ -231,6 +232,89 @@ function getClaudeAdapter(
             process.stdout.write(part.completion || '');
           fullMessage += part.completion || '';
           if (part.completion) tokens += part.completion.length;
+        }
+
+        const endTime = process.hrtime(startTime);
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            '\nCharacters per second: ',
+            tokens / (endTime[0] + endTime[1] / 1e9),
+          );
+
+        return fullMessage || null;
+      } catch (err) {
+        console.error(`Error retrieving response from model ${params}`);
+        console.error(err);
+        return null;
+      }
+    },
+  };
+
+  return adapter;
+}
+
+function getClaudeAdapter(anthropic: Anthropic, params?: CommonLLMParameters) {
+  const DEFAULT_CLAUDE_PARAMS = {
+    model: 'claude-2',
+    temperature: 0,
+  };
+
+  const DEFAULT_CLAUDE_LLM_CONFIG: LLMConfig = {
+    enableTodaysDate: true,
+    fewShotLearning: [],
+  };
+
+  const adapter: {
+    llmConfig: LLMConfig;
+    callLLM: LLMCallFunc;
+  } = {
+    llmConfig: DEFAULT_CLAUDE_LLM_CONFIG,
+    callLLM: async function callLLM(
+      messages: LLMCompatibleMessage[],
+      queryPrefix?: string,
+    ) {
+      try {
+        const formattedMessages = messages.filter(
+          (message) => message.role !== 'system',
+        ) as MessageParam[];
+
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            `Asking ${
+              params?.model ?? DEFAULT_CLAUDE_PARAMS.model
+            } (Anthropic)...\n`,
+          );
+
+        const completion = await anthropic.messages.create({
+          messages: formattedMessages,
+          system: messages.find((message) => message.role === 'system')
+            ?.content,
+          max_tokens: 4096,
+          ...{ ...DEFAULT_CLAUDE_PARAMS, ...(params || {}) },
+          stream: true,
+        });
+
+        let fullMessage = '';
+
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log('Streaming response: ');
+
+        const startTime = process.hrtime();
+        let tokens = 0;
+
+        for await (const part of completion) {
+          if (part.type === 'content_block_start') {
+            fullMessage += part.content_block.text || '';
+            if (process.env.PRINT_WS_INTERNALS === 'yes')
+              process.stdout.write(part.content_block.text || '');
+          } else if (part.type === 'content_block_delta') {
+            fullMessage += part.delta.text || '';
+
+            if (process.env.PRINT_WS_INTERNALS === 'yes')
+              process.stdout.write(part.delta.text || '');
+          } else if (part.type === 'message_delta') {
+            tokens += part.usage.output_tokens;
+          }
         }
 
         const endTime = process.hrtime(startTime);
@@ -621,6 +705,7 @@ function getAzureOpenAIAdapter(
 const adapters = {
   getOpenAIAdapter,
   getClaudeAdapter,
+  getClaudeLegacyAdapter,
   getOllamaAdapter,
   getLMStudioAdapter,
   getTogetherAIAdapter,
