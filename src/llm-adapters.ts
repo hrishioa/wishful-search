@@ -274,9 +274,12 @@ function getClaudeAdapter(anthropic: Anthropic, params?: CommonLLMParameters) {
       queryPrefix?: string,
     ) {
       try {
-        const formattedMessages = messages.filter(
-          (message) => message.role !== 'system',
-        ) as MessageParam[];
+        const formattedMessages = messages
+          .filter((message) => message.role !== 'system')
+          .map((o) => ({
+            role: o.role,
+            content: o.role === 'assistant' ? o.content.trimEnd() : o.content,
+          })) as MessageParam[];
 
         if (process.env.PRINT_WS_INTERNALS === 'yes')
           console.log(
