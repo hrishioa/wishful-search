@@ -10,8 +10,14 @@ import type OpenAI from 'openai';
 import type Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam } from '@anthropic-ai/sdk/resources';
 import type { OpenAIClient } from '@azure/openai';
+import type Groq from 'groq-sdk';
 import { TogetherAISupportedModel, callTogetherAI } from './togetherai';
 import { jsonStreamParser } from './oboe-parser';
+import { ChatCompletionChunk } from 'groq-sdk/lib/chat_completions_ext';
+
+export type LocalModelParameters = CommonLLMParameters & {
+  model: keyof typeof LLMTemplateFunctions;
+};
 
 export function getTogetherAIAdapter(
   params?: CommonLLMParameters & { model: TogetherAISupportedModel },
@@ -212,7 +218,7 @@ export function getOllamaAdapter(params?: CommonLLMParameters) {
   return adapter;
 }
 
-function getClaudeLegacyAdapter(
+export function getClaudeLegacyAdapter(
   humanPromptTag: string,
   assistantPromptTag: string,
   anthropic: Anthropic,
@@ -331,7 +337,10 @@ function getClaudeLegacyAdapter(
   return adapter;
 }
 
-function getClaudeAdapter(anthropic: Anthropic, params?: CommonLLMParameters) {
+export function getClaudeAdapter(
+  anthropic: Anthropic,
+  params?: CommonLLMParameters,
+) {
   const DEFAULT_CLAUDE_PARAMS = {
     model: 'claude-2',
     temperature: 0,
@@ -453,10 +462,6 @@ function getClaudeAdapter(anthropic: Anthropic, params?: CommonLLMParameters) {
   return adapter;
 }
 
-export type LocalModelParameters = CommonLLMParameters & {
-  model: keyof typeof LLMTemplateFunctions;
-};
-
 export function getLMStudioAdapter(
   modifiedOpenAI: OpenAI,
   template: keyof typeof LLMTemplateFunctions,
@@ -571,7 +576,7 @@ export function getLMStudioAdapter(
   return adapter;
 }
 
-function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
+export function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
   const DEFAULT_OPENAI_PARAMS = {
     model: 'gpt-3.5-turbo',
     temperature: 0,
@@ -800,7 +805,7 @@ export function getAzureMistralAdapter(
   return adapter;
 }
 
-function getAzureOpenAIAdapter(
+export function getAzureOpenAIAdapter(
   azureOpenAI: OpenAIClient,
   params: CommonLLMParameters,
 ) {
@@ -881,6 +886,100 @@ function getAzureOpenAIAdapter(
   return adapter;
 }
 
+export function getGroqAdapter(groq: Groq, params: CommonLLMParameters) {
+  const DEFAULT_GROQ_PARAMS = {
+    model: 'mixtral-8x7b-32768',
+    temperature: 0,
+  };
+  const DEFAULT_GROQ_LLM_CONFIG: LLMConfig = {
+    enableTodaysDate: true,
+    fewShotLearning: [],
+  };
+
+  const { response_format, ...otherParams } = params || {};
+
+  const adapter: {
+    llmConfig: LLMConfig;
+    callLLM: LLMCallFunc;
+  } = {
+    llmConfig: DEFAULT_GROQ_LLM_CONFIG,
+    callLLM: async function callLLM(messages: LLMCompatibleMessage[]) {
+      try {
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            `Asking ${params?.model ?? DEFAULT_GROQ_PARAMS.model} (Groq)...\n`,
+          );
+
+        const completion = await groq.chat.completions.create({
+          messages,
+          ...{ ...DEFAULT_GROQ_PARAMS, ...(otherParams || {}) },
+          stream: true,
+        });
+
+        let fullMessage = '';
+
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log('Streaming response: ');
+
+        const startTime = process.hrtime();
+        let tokens = 0;
+
+        if (response_format?.type === 'json_object') {
+          console.log('JSON stream parser:');
+          const stream = jsonStreamParser<ChatCompletionChunk>(
+            completion,
+            (content) => content.choices[0]?.delta?.content || '',
+            {
+              includeRaw: true,
+            },
+          );
+
+          for await (const chunk of stream) {
+            if (chunk.type === 'token') {
+              if (process.env.PRINT_WS_INTERNALS === 'yes')
+                process.stdout.write(chunk.token);
+              tokens += chunk.token.length;
+            } else if (chunk.type === 'completeJSON') {
+              fullMessage = chunk.completeJSON;
+            }
+          }
+          const endTime = process.hrtime(startTime);
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.log(
+              '\nCharacters per second: ',
+              tokens / (endTime[0] + endTime[1] / 1e9),
+            );
+
+          return fullMessage || null;
+        } else {
+          for await (const part of completion) {
+            if (process.env.PRINT_WS_INTERNALS === 'yes')
+              process.stdout.write(part.choices[0]?.delta?.content || '');
+            fullMessage +=
+              part.choices[0]?.delta?.content?.replace('\\', '') || '';
+            if (part.choices[0]?.delta?.content)
+              tokens += part.choices[0]?.delta?.content.length;
+          }
+
+          const endTime = process.hrtime(startTime);
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.log(
+              '\nCharacters per second: ',
+              tokens / (endTime[0] + endTime[1] / 1e9),
+            );
+
+          return fullMessage || null;
+        }
+      } catch (err) {
+        console.error(`Error retrieving response from model ${params}`);
+        console.error(err);
+        return null;
+      }
+    },
+  };
+  return adapter;
+}
+
 const adapters = {
   getOpenAIAdapter,
   getClaudeAdapter,
@@ -890,6 +989,7 @@ const adapters = {
   getTogetherAIAdapter,
   getAzureOpenAIAdapter,
   getAzureMistralAdapter,
+  getGroqAdapter,
 };
 
 export default adapters;
