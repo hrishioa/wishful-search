@@ -120,8 +120,7 @@ export function getOllamaAdapter(params?: CommonLLMParameters) {
         });
 
       const { prompt, stopSequences } =
-        LLMTemplateFunctions['yarn-mistral'](messages);
-      console.log('Using prompt', prompt);
+        LLMTemplateFunctions['mistral'](messages);
       if (process.env.PRINT_WS_INTERNALS === 'yes')
         console.log(
           `Asking ${
@@ -132,8 +131,11 @@ export function getOllamaAdapter(params?: CommonLLMParameters) {
       const response = await callOllama(
         prompt,
         params?.model ?? DEFAULT_MISTRAL_PARAMS.model,
-        11434,
-        params?.temperature ?? DEFAULT_MISTRAL_PARAMS.temperature,
+        {
+          temperature:
+            params?.temperature ?? DEFAULT_MISTRAL_PARAMS.temperature,
+          format: response_format?.type === 'json_object' ? 'json' : undefined,
+        },
       );
 
       if (process.env.PRINT_WS_INTERNALS === 'yes')
@@ -144,6 +146,7 @@ export function getOllamaAdapter(params?: CommonLLMParameters) {
 
       if (response_format?.type === 'json_object') {
         console.log('JSON stream parser:');
+        // It might not be necessary to use the jsonStreamParser here
         const stream = jsonStreamParser<
           | { type: 'token'; token: string }
           | {
@@ -169,6 +172,7 @@ export function getOllamaAdapter(params?: CommonLLMParameters) {
               process.stdout.write(chunk.token);
             tokens += chunk.token.length;
           } else if (chunk.type === 'completeJSON') {
+            console.log(chunk);
             return chunk.completeJSON;
           }
         }
