@@ -269,10 +269,7 @@ function getClaudeAdapter(anthropic: Anthropic, params?: CommonLLMParameters) {
     callLLM: LLMCallFunc;
   } = {
     llmConfig: DEFAULT_CLAUDE_LLM_CONFIG,
-    callLLM: async function callLLM(
-      messages: LLMCompatibleMessage[],
-      queryPrefix?: string,
-    ) {
+    callLLM: async function callLLM(messages: LLMCompatibleMessage[]) {
       try {
         const formattedMessages = messages
           .filter((message) => message.role !== 'system')
