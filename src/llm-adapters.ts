@@ -11,6 +11,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam } from '@anthropic-ai/sdk/resources';
 import type { OpenAIClient } from '@azure/openai';
 import { TogetherAISupportedModel, callTogetherAI } from './togetherai';
+import { jsonStreamParser } from './oboe-parser';
 
 export function getTogetherAIAdapter(
   params?: CommonLLMParameters & { model: TogetherAISupportedModel },
@@ -96,6 +97,8 @@ export function getOllamaAdapter(params?: CommonLLMParameters) {
     temperature: 0,
   };
 
+  const { response_format } = params || {};
+
   const DEFAULT_MISTRAL_LLM_CONFIG: LLMConfig = {
     enableTodaysDate: true,
     fewShotLearning: [],
@@ -117,8 +120,8 @@ export function getOllamaAdapter(params?: CommonLLMParameters) {
         });
 
       const { prompt, stopSequences } =
-        LLMTemplateFunctions['mistral'](messages);
-
+        LLMTemplateFunctions['yarn-mistral'](messages);
+      console.log('Using prompt', prompt);
       if (process.env.PRINT_WS_INTERNALS === 'yes')
         console.log(
           `Asking ${
@@ -139,26 +142,66 @@ export function getOllamaAdapter(params?: CommonLLMParameters) {
       const startTime = process.hrtime();
       let tokens = 0;
 
-      for await (const token of response) {
-        if (token.type === 'completeMessage') {
-          if (process.env.PRINT_WS_INTERNALS === 'yes')
-            process.stdout.write(
-              token.message.split(stopSequences[0]!)[0] ||
-                '<NO TOKEN RECEIVED>',
-            );
-          tokens += token.message.length;
-          return token.message.split(stopSequences[0]!)[0] || null;
-        }
-      }
-
-      const endTime = process.hrtime(startTime);
-      if (process.env.PRINT_WS_INTERNALS === 'yes')
-        console.log(
-          '\nCharacters per second: ',
-          tokens / (endTime[0] + endTime[1] / 1e9),
+      if (response_format?.type === 'json_object') {
+        console.log('JSON stream parser:');
+        const stream = jsonStreamParser<
+          | { type: 'token'; token: string }
+          | {
+              type: 'completeMessage';
+              message: string;
+            }
+        >(
+          response,
+          (content) => {
+            if (content.type === 'token') {
+              return content.token;
+            }
+            return '';
+          },
+          {
+            includeRaw: true,
+          },
         );
 
-      return null;
+        for await (const chunk of stream) {
+          if (chunk.type === 'token') {
+            if (process.env.PRINT_WS_INTERNALS === 'yes')
+              process.stdout.write(chunk.token);
+            tokens += chunk.token.length;
+          } else if (chunk.type === 'completeJSON') {
+            return chunk.completeJSON;
+          }
+        }
+        const endTime = process.hrtime(startTime);
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            '\nCharacters per second: ',
+            tokens / (endTime[0] + endTime[1] / 1e9),
+          );
+
+        return null;
+      } else {
+        for await (const token of response) {
+          if (token.type === 'completeMessage') {
+            if (process.env.PRINT_WS_INTERNALS === 'yes')
+              process.stdout.write(
+                token.message.split(stopSequences[0]!)[0] ||
+                  '<NO TOKEN RECEIVED>',
+              );
+            tokens += token.message.length;
+            return token.message.split(stopSequences[0]!)[0] || null;
+          }
+        }
+
+        const endTime = process.hrtime(startTime);
+        if (process.env.PRINT_WS_INTERNALS === 'yes')
+          console.log(
+            '\nCharacters per second: ',
+            tokens / (endTime[0] + endTime[1] / 1e9),
+          );
+
+        return null;
+      }
     },
   };
 
@@ -175,6 +218,8 @@ function getClaudeLegacyAdapter(
     model: 'claude-2',
     temperature: 0,
   };
+
+  const { response_format, ...otherParams } = params || {};
 
   const DEFAULT_CLAUDE_LLM_CONFIG: LLMConfig = {
     enableTodaysDate: true,
@@ -215,7 +260,7 @@ function getClaudeLegacyAdapter(
         const completion = await anthropic.completions.create({
           prompt,
           max_tokens_to_sample: 10000,
-          ...{ ...DEFAULT_CLAUDE_PARAMS, ...(params || {}) },
+          ...{ ...DEFAULT_CLAUDE_PARAMS, ...(otherParams || {}) },
           stream: true,
         });
 
@@ -227,21 +272,50 @@ function getClaudeLegacyAdapter(
         const startTime = process.hrtime();
         let tokens = 0;
 
-        for await (const part of completion) {
-          if (process.env.PRINT_WS_INTERNALS === 'yes')
-            process.stdout.write(part.completion || '');
-          fullMessage += part.completion || '';
-          if (part.completion) tokens += part.completion.length;
-        }
-
-        const endTime = process.hrtime(startTime);
-        if (process.env.PRINT_WS_INTERNALS === 'yes')
-          console.log(
-            '\nCharacters per second: ',
-            tokens / (endTime[0] + endTime[1] / 1e9),
+        if (response_format?.type === 'json_object') {
+          console.log('JSON stream parser:');
+          const stream = jsonStreamParser<Anthropic.Completions.Completion>(
+            completion,
+            (content) => content.completion,
+            {
+              includeRaw: true,
+            },
           );
 
-        return fullMessage || null;
+          for await (const chunk of stream) {
+            if (chunk.type === 'token') {
+              if (process.env.PRINT_WS_INTERNALS === 'yes')
+                process.stdout.write(chunk.token);
+              tokens += chunk.token.length;
+            } else if (chunk.type === 'completeJSON') {
+              fullMessage = chunk.completeJSON;
+            }
+          }
+          const endTime = process.hrtime(startTime);
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.log(
+              '\nCharacters per second: ',
+              tokens / (endTime[0] + endTime[1] / 1e9),
+            );
+
+          return fullMessage || null;
+        } else {
+          for await (const part of completion) {
+            if (process.env.PRINT_WS_INTERNALS === 'yes')
+              process.stdout.write(part.completion || '');
+            fullMessage += part.completion || '';
+            if (part.completion) tokens += part.completion.length;
+          }
+
+          const endTime = process.hrtime(startTime);
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.log(
+              '\nCharacters per second: ',
+              tokens / (endTime[0] + endTime[1] / 1e9),
+            );
+
+          return fullMessage || null;
+        }
       } catch (err) {
         console.error(`Error retrieving response from model ${params}`);
         console.error(err);
@@ -258,6 +332,8 @@ function getClaudeAdapter(anthropic: Anthropic, params?: CommonLLMParameters) {
     model: 'claude-2',
     temperature: 0,
   };
+
+  const { response_format, ...otherParams } = params || {};
 
   const DEFAULT_CLAUDE_LLM_CONFIG: LLMConfig = {
     enableTodaysDate: true,
@@ -290,7 +366,7 @@ function getClaudeAdapter(anthropic: Anthropic, params?: CommonLLMParameters) {
           system: messages.find((message) => message.role === 'system')
             ?.content,
           max_tokens: 4096,
-          ...{ ...DEFAULT_CLAUDE_PARAMS, ...(params || {}) },
+          ...{ ...DEFAULT_CLAUDE_PARAMS, ...(otherParams || {}) },
           stream: true,
         });
 
@@ -302,29 +378,66 @@ function getClaudeAdapter(anthropic: Anthropic, params?: CommonLLMParameters) {
         const startTime = process.hrtime();
         let tokens = 0;
 
-        for await (const part of completion) {
-          if (part.type === 'content_block_start') {
-            fullMessage += part.content_block.text || '';
-            if (process.env.PRINT_WS_INTERNALS === 'yes')
-              process.stdout.write(part.content_block.text || '');
-          } else if (part.type === 'content_block_delta') {
-            fullMessage += part.delta.text || '';
+        if (response_format?.type === 'json_object') {
+          console.log('JSON stream parser:');
+          const stream =
+            jsonStreamParser<Anthropic.Messages.MessageStreamEvent>(
+              completion,
+              (content) => {
+                if (content.type === 'content_block_start') {
+                  return content.content_block.text;
+                } else if (content.type === 'content_block_delta') {
+                  return content.delta.text;
+                }
+                return '';
+              },
+              {
+                includeRaw: true,
+              },
+            );
 
-            if (process.env.PRINT_WS_INTERNALS === 'yes')
-              process.stdout.write(part.delta.text || '');
-          } else if (part.type === 'message_delta') {
-            tokens += part.usage.output_tokens;
+          for await (const chunk of stream) {
+            if (chunk.type === 'token') {
+              if (process.env.PRINT_WS_INTERNALS === 'yes')
+                process.stdout.write(chunk.token);
+              tokens += chunk.token.length;
+            } else if (chunk.type === 'completeJSON') {
+              fullMessage = chunk.completeJSON;
+            }
           }
+          const endTime = process.hrtime(startTime);
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.log(
+              '\nCharacters per second: ',
+              tokens / (endTime[0] + endTime[1] / 1e9),
+            );
+
+          return fullMessage || null;
+        } else {
+          for await (const part of completion) {
+            if (part.type === 'content_block_start') {
+              fullMessage += part.content_block.text || '';
+              if (process.env.PRINT_WS_INTERNALS === 'yes')
+                process.stdout.write(part.content_block.text || '');
+            } else if (part.type === 'content_block_delta') {
+              fullMessage += part.delta.text || '';
+
+              if (process.env.PRINT_WS_INTERNALS === 'yes')
+                process.stdout.write(part.delta.text || '');
+            } else if (part.type === 'message_delta') {
+              tokens += part.usage.output_tokens;
+            }
+          }
+
+          const endTime = process.hrtime(startTime);
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.log(
+              '\nCharacters per second: ',
+              tokens / (endTime[0] + endTime[1] / 1e9),
+            );
+
+          return fullMessage || null;
         }
-
-        const endTime = process.hrtime(startTime);
-        if (process.env.PRINT_WS_INTERNALS === 'yes')
-          console.log(
-            '\nCharacters per second: ',
-            tokens / (endTime[0] + endTime[1] / 1e9),
-          );
-
-        return fullMessage || null;
       } catch (err) {
         console.error(`Error retrieving response from model ${params}`);
         console.error(err);
@@ -349,6 +462,8 @@ export function getLMStudioAdapter(
     model: 'mistral',
     temperature: 0,
   };
+
+  const { response_format, ...otherParams } = params || {};
 
   const DEFAULT_LLM_CONFIG: LLMConfig = {
     enableTodaysDate: true,
@@ -383,7 +498,7 @@ export function getLMStudioAdapter(
 
         const completion = await modifiedOpenAI.chat.completions.create({
           messages: [{ role: 'user', content: prompt }],
-          ...{ ...DEFAULT_PARAMS, ...(params || {}) },
+          ...{ ...DEFAULT_PARAMS, ...(otherParams || {}) },
           stop: stopSequences,
           stream: true,
         });
@@ -396,22 +511,51 @@ export function getLMStudioAdapter(
         const startTime = process.hrtime();
         let tokens = 0;
 
-        for await (const part of completion) {
-          if (process.env.PRINT_WS_INTERNALS === 'yes')
-            process.stdout.write(part.choices[0]?.delta?.content || '');
-          fullMessage += part.choices[0]?.delta?.content || '';
-          if (part.choices[0]?.delta?.content)
-            tokens += part.choices[0]?.delta?.content.length;
-        }
-
-        const endTime = process.hrtime(startTime);
-        if (process.env.PRINT_WS_INTERNALS === 'yes')
-          console.log(
-            '\nCharacters per second: ',
-            tokens / (endTime[0] + endTime[1] / 1e9),
+        if (response_format?.type === 'json_object') {
+          console.log('JSON stream parser:');
+          const stream = jsonStreamParser(
+            completion,
+            (content) => content.choices[0]?.delta?.content || '',
+            {
+              includeRaw: true,
+            },
           );
 
-        return fullMessage || null;
+          for await (const chunk of stream) {
+            if (chunk.type === 'token') {
+              if (process.env.PRINT_WS_INTERNALS === 'yes')
+                process.stdout.write(chunk.token);
+              tokens += chunk.token.length;
+            } else if (chunk.type === 'completeJSON') {
+              fullMessage = chunk.completeJSON;
+            }
+          }
+          const endTime = process.hrtime(startTime);
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.log(
+              '\nCharacters per second: ',
+              tokens / (endTime[0] + endTime[1] / 1e9),
+            );
+
+          return fullMessage || null;
+        } else {
+          for await (const part of completion) {
+            if (process.env.PRINT_WS_INTERNALS === 'yes')
+              process.stdout.write(part.choices[0]?.delta?.content || '');
+            fullMessage += part.choices[0]?.delta?.content || '';
+            if (part.choices[0]?.delta?.content)
+              tokens += part.choices[0]?.delta?.content.length;
+          }
+
+          const endTime = process.hrtime(startTime);
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.log(
+              '\nCharacters per second: ',
+              tokens / (endTime[0] + endTime[1] / 1e9),
+            );
+
+          return fullMessage || null;
+        }
       } catch (err) {
         console.error(`Error retrieving response from model ${params}`);
         console.error(err);
@@ -428,6 +572,8 @@ function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
     model: 'gpt-3.5-turbo',
     temperature: 0,
   };
+
+  const { response_format, ...otherParams } = params || {};
 
   const DEFAULT_OPENAI_LLM_CONFIG: LLMConfig = {
     enableTodaysDate: true,
@@ -463,7 +609,7 @@ function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
 
         const completion = await openai.chat.completions.create({
           messages,
-          ...{ ...DEFAULT_OPENAI_PARAMS, ...(params || {}) },
+          ...{ ...DEFAULT_OPENAI_PARAMS, ...(otherParams || {}) },
           stream: true,
         });
 
@@ -475,22 +621,51 @@ function getOpenAIAdapter(openai: OpenAI, params?: CommonLLMParameters) {
         const startTime = process.hrtime();
         let tokens = 0;
 
-        for await (const part of completion) {
-          if (process.env.PRINT_WS_INTERNALS === 'yes')
-            process.stdout.write(part.choices[0]?.delta?.content || '');
-          fullMessage += part.choices[0]?.delta?.content || '';
-          if (part.choices[0]?.delta?.content)
-            tokens += part.choices[0]?.delta?.content.length;
-        }
-
-        const endTime = process.hrtime(startTime);
-        if (process.env.PRINT_WS_INTERNALS === 'yes')
-          console.log(
-            '\nCharacters per second: ',
-            tokens / (endTime[0] + endTime[1] / 1e9),
+        if (response_format?.type === 'json_object') {
+          console.log('JSON stream parser:');
+          const stream = jsonStreamParser(
+            completion,
+            (content) => content.choices[0]?.delta?.content || '',
+            {
+              includeRaw: true,
+            },
           );
 
-        return fullMessage || null;
+          for await (const chunk of stream) {
+            if (chunk.type === 'token') {
+              if (process.env.PRINT_WS_INTERNALS === 'yes')
+                process.stdout.write(chunk.token);
+              tokens += chunk.token.length;
+            } else if (chunk.type === 'completeJSON') {
+              fullMessage = chunk.completeJSON;
+            }
+          }
+          const endTime = process.hrtime(startTime);
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.log(
+              '\nCharacters per second: ',
+              tokens / (endTime[0] + endTime[1] / 1e9),
+            );
+
+          return fullMessage || null;
+        } else {
+          for await (const part of completion) {
+            if (process.env.PRINT_WS_INTERNALS === 'yes')
+              process.stdout.write(part.choices[0]?.delta?.content || '');
+            fullMessage += part.choices[0]?.delta?.content || '';
+            if (part.choices[0]?.delta?.content)
+              tokens += part.choices[0]?.delta?.content.length;
+          }
+
+          const endTime = process.hrtime(startTime);
+          if (process.env.PRINT_WS_INTERNALS === 'yes')
+            console.log(
+              '\nCharacters per second: ',
+              tokens / (endTime[0] + endTime[1] / 1e9),
+            );
+
+          return fullMessage || null;
+        }
       } catch (err) {
         console.error(`Error retrieving response from model ${params}`);
         console.error(err);
