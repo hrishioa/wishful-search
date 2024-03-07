@@ -178,7 +178,6 @@ export function getOllamaAdapter(params?: CommonLLMParameters) {
               process.stdout.write(chunk.token);
             tokens += chunk.token.length;
           } else if (chunk.type === 'completeJSON') {
-            console.log(chunk);
             return chunk.completeJSON;
           }
         }
@@ -926,6 +925,7 @@ export function getGroqAdapter(groq: Groq, params: CommonLLMParameters) {
 
         if (response_format?.type === 'json_object') {
           console.log('JSON stream parser:');
+          // Issue with the library
           const stream = jsonStreamParser<ChatCompletionChunk>(
             completion,
             (content) => content.choices[0]?.delta?.content || '',

@@ -21,38 +21,135 @@ export async function* jsonStreamParser<T>(
   const transformStream = new Transform({
     objectMode: true,
     transform(chunk, encoding, callback) {
-      let tokenData = '';
       const content = contentParser(chunk);
-      if (includeRaw) {
-        if (!complete) {
-          returnStream.write({
-            type: 'token',
-            token: content,
-          });
-        }
-      }
       if (content !== undefined) {
-        if (!start) {
-          if (content.includes('{')) start = true;
-        }
-        if (start) {
+        if (content.includes('{')) {
+          const beforeBracket = content.slice(0, content.indexOf('{'));
+          const afterBracket = content.slice(content.indexOf('{'));
+
+          if (includeRaw) {
+            if (!start) {
+              returnStream.write({
+                type: 'notJsonToken',
+                notJsonToken: beforeBracket,
+              });
+            } else {
+              returnStream.write({
+                type: 'token',
+                token: beforeBracket,
+              });
+            }
+          }
+          if (start) {
+            fullMessage += beforeBracket;
+            this.push(beforeBracket);
+          }
+          if (!start) {
+            start = true;
+            returnStream.write({
+              type: 'startJson',
+            });
+          }
+          if (includeRaw) {
+            if (!start) {
+              returnStream.write({
+                type: 'notJsonToken',
+                notJsonToken: afterBracket,
+              });
+            } else {
+              returnStream.write({
+                type: 'token',
+                token: afterBracket,
+              });
+            }
+          }
+          if (start) {
+            fullMessage += afterBracket;
+            this.push(afterBracket);
+          }
+        } else if (content.includes('}')) {
+          const beforeBracket = content.slice(0, content.indexOf('}') + 1);
+          const afterBracket = content.slice(content.indexOf('}') + 1);
+
+          if (includeRaw) {
+            if (!start) {
+              returnStream.write({
+                type: 'notJsonToken',
+                notJsonToken: beforeBracket,
+              });
+            } else {
+              returnStream.write({
+                type: 'token',
+                token: beforeBracket,
+              });
+            }
+          }
+          if (start) {
+            fullMessage += beforeBracket;
+            this.push(beforeBracket);
+          }
+          if (includeRaw) {
+            if (!start) {
+              returnStream.write({
+                type: 'notJsonToken',
+                notJsonToken: afterBracket,
+              });
+            } else {
+              returnStream.write({
+                type: 'token',
+                token: afterBracket,
+              });
+            }
+          }
+          if (start) {
+            fullMessage += afterBracket;
+            this.push(afterBracket);
+          }
+        } else {
+          if (includeRaw) {
+            if (!start) {
+              returnStream.write({
+                type: 'notJsonToken',
+                notJsonToken: content,
+              });
+            } else {
+              returnStream.write({
+                type: 'token',
+                token: content,
+              });
+            }
+          }
           fullMessage += content;
-          tokenData += content;
+          if (start) {
+            this.push(content);
+          }
         }
       }
 
-      if (tokenData) this.push(tokenData);
       callback();
     },
   });
 
   oboe(mainStream.pipe(transformStream))
+    .path('.*', function (value, path) {
+      if (includeIntermediate) {
+        if (path.length && !returnStream.destroyed) {
+          returnStream.write({
+            type: 'childStart',
+            childStart: {
+              path,
+              value,
+            },
+          });
+        }
+      }
+    })
     .node('.*', function (value, path) {
       if (includeIntermediate) {
         if (path.length && !returnStream.destroyed) {
           returnStream.write({
-            type: 'intermediate',
-            intermediate: {
+            type: 'childEnd',
+            childEnd: {
               path,
               value,
             },
@@ -65,6 +162,10 @@ export async function* jsonStreamParser<T>(
     // })
     .done(function (completeJSON) {
       complete = true;
+      start = false;
+      returnStream.write({
+        type: 'stopJson',
+      });
       returnStream.write({
         type: 'completeJSON',
         completeJSON: JSON.parse(JSON.stringify(completeJSON)),
@@ -74,6 +175,7 @@ export async function* jsonStreamParser<T>(
 
   includeRaw &&
     mainStream.on('end', () => {
+      console.log('Stream ended');
       returnStream.end();
     });
 

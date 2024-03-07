@@ -17,6 +17,7 @@ module.exports = {
     fallback: {
       path: false,
       fs: false,
+      stream: false
     },
   },
   output: {
