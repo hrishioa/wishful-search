@@ -13,13 +13,13 @@ export async function* jsonStreamParser<T>(
 ) {
   const { includeIntermediate = false, includeRaw = false } = props || {};
   let fullMessage = '',
-    start: boolean = false,
-    complete: boolean = false;
+    start: boolean = false;
   const mainStream = Readable.from(stream);
   const returnStream = new PassThrough({ objectMode: true });
 
   const transformStream = new Transform({
     objectMode: true,
+    // @ts-ignore
     transform(chunk, encoding, callback) {
       const content = contentParser(chunk);
       if (content !== undefined) {
@@ -161,7 +161,6 @@ export async function* jsonStreamParser<T>(
     //   console.log('Oboe failed', error);
     // })
     .done(function (completeJSON) {
-      complete = true;
       start = false;
       returnStream.write({
         type: 'stopJson',
