@@ -1,8 +1,35 @@
+function concatChunks(chunks: Uint8Array[], totalLength: number) {
+  const concatenatedChunks = new Uint8Array(totalLength);
+
+  let offset = 0;
+  for (const chunk of chunks) {
+    concatenatedChunks.set(chunk, offset);
+    offset += chunk.length;
+  }
+  chunks.length = 0;
+
+  return concatenatedChunks;
+}
+
+type OllamaStreamResponse = {
+  model: string;
+  created_at: string;
+  response: string;
+  done: boolean;
+};
+
 export async function* callOllama(
-  rawPrompt: string,
+  prompt: string,
   model: string,
-  port: number = 11434,
-  temperature: number = 0,
+  {
+    port = 11434,
+    temperature = 0,
+    format,
+  }: {
+    port?: number;
+    temperature?: number;
+    format?: 'json';
+  },
 ): AsyncGenerator<
   | {
       type: 'token';
@@ -20,11 +47,13 @@ export async function* callOllama(
   };
 
   const requestBody = JSON.stringify({
-    model: model,
-    template: rawPrompt,
+    model,
+    prompt,
+    format,
     options: {
       temperature,
     },
+    stream: true,
   });
 
   // Using fetch to initiate a POST request that will return an SSE stream
@@ -33,12 +62,13 @@ export async function* callOllama(
     headers: headers,
     body: requestBody,
   });
-
   if (response.ok) {
     const reader = response.body!.getReader();
-    let textBuffer = '',
-      completeMessage = '';
+    let completeMessage = '';
 
+    const decoder = new TextDecoder();
+    const chunks: Uint8Array[] = [];
+    let totalLength = 0;
     while (true) {
       const { done, value } = await reader.read();
 
@@ -46,59 +76,41 @@ export async function* callOllama(
         break;
       }
 
-      // Append the new chunk to the existing buffer
-      textBuffer += new TextDecoder().decode(value);
-
-      // Attempt to parse all complete JSON objects in the buffer
-      while (true) {
-        const openingBraceIndex = textBuffer.indexOf('{');
-        const closingBraceIndex = textBuffer.indexOf('}');
-
-        // Check if we have a complete object
-        if (openingBraceIndex !== -1 && closingBraceIndex !== -1) {
-          // Extract and parse the JSON object
-          const jsonString = textBuffer.slice(
-            openingBraceIndex,
-            closingBraceIndex + 1,
-          );
-          try {
-            const parsedObject = JSON.parse(jsonString);
-
-            if (!parsedObject.model)
-              throw new Error(
-                'Unrecognized response from ollama - missing model field',
-              );
-
-            if (parsedObject.response) {
-              yield {
-                type: 'token',
-                token: parsedObject.response,
-              };
-              completeMessage += parsedObject.response;
-            }
-
-            if (parsedObject.done || completeMessage.indexOf('</s>') !== -1) {
-              yield {
-                type: 'completeMessage',
-                message: completeMessage,
-              };
-              return;
-            }
-
-            // Remove the parsed object from the buffer
-            textBuffer = textBuffer.slice(closingBraceIndex + 1);
-          } catch (err) {
-            console.error(
-              'Error parsing Ollama response object - ',
-              jsonString,
-            );
-            throw err;
-          }
-        } else {
-          // No complete JSON objects in buffer
-          break;
+      if (value) {
+        chunks.push(value);
+        totalLength += value.length;
+        if (value[value.length - 1] !== '\n'.charCodeAt(0)) {
+          // if the last character is not a newline, we have not read the whole JSON value
+          continue;
         }
       }
+
+      if (chunks.length === 0) {
+        break;
+      }
+
+      const concatenatedChunks = concatChunks(chunks, totalLength);
+      totalLength = 0;
+
+      const streamParts = decoder
+        .decode(concatenatedChunks, { stream: true })
+        .split('\n')
+        .filter((line) => line !== '') // splitting leaves an empty string at the end
+        .map((o) =>
+          JSON.parse(o.replace('data: ', '')),
+        ) as OllamaStreamResponse[];
+      for (const parts of streamParts) {
+        completeMessage += parts.response;
+        yield {
+          type: 'token',
+          token: parts.response,
+        };
+      }
+
+      yield {
+        type: 'completeMessage',
+        message: completeMessage,
+      };
     }
   } else {
     throw new Error(`Ollama fetch failed with status: ${response.status}`);
