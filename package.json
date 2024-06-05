@@ -10,7 +10,6 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.16.1",
     "@azure/openai": "^1.0.0-beta.9",
-    "api": "^6.1.1",
     "openai": "^4.24.7",
     "sql.js": "^1.8.0"
   },
@@ -37,6 +36,6 @@
     "typescript": "^5.2.2",
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz"
   }
 }
